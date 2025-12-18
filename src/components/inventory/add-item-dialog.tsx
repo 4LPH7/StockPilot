@@ -85,7 +85,7 @@ export function AddItemDialog({ onAddItem }: AddItemDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <PlusCircle />
+          <PlusCircle className="mr-2 h-4 w-4" />
           Add Item
         </Button>
       </DialogTrigger>

@@ -63,10 +63,10 @@ export default function InventoryTable({ items, onUpdateQuantity, onDeleteItem }
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[40%]">Item</TableHead>
-                <TableHead>Category</TableHead>
+                <TableHead className="hidden md:table-cell">Category</TableHead>
                 <TableHead className="text-right">Price</TableHead>
                 <TableHead className="text-center">Quantity</TableHead>
-                <TableHead className="text-right">Total Value</TableHead>
+                <TableHead className="hidden sm:table-cell text-right">Total Value</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -79,12 +79,12 @@ export default function InventoryTable({ items, onUpdateQuantity, onDeleteItem }
                       {item.description}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Badge variant="secondary">{item.category}</Badge>
                   </TableCell>
                   <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
                   <TableCell className="text-center font-medium">{item.quantity}</TableCell>
-                   <TableCell className="text-right font-medium">
+                   <TableCell className="hidden sm:table-cell text-right font-medium">
                     {formatCurrency(item.price * item.quantity)}
                   </TableCell>
                   <TableCell className="text-right">
