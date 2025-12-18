@@ -44,6 +44,13 @@ export default function InventoryTable({ items, onUpdateQuantity, onDeleteItem }
       </Card>
     );
   }
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
 
   return (
     <Card>
@@ -55,9 +62,11 @@ export default function InventoryTable({ items, onUpdateQuantity, onDeleteItem }
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[40%]">Item Name</TableHead>
+                <TableHead className="w-[40%]">Item</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead className="text-right">Price</TableHead>
                 <TableHead className="text-center">Quantity</TableHead>
+                <TableHead className="text-right">Total Value</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -73,7 +82,11 @@ export default function InventoryTable({ items, onUpdateQuantity, onDeleteItem }
                   <TableCell>
                     <Badge variant="secondary">{item.category}</Badge>
                   </TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
                   <TableCell className="text-center font-medium">{item.quantity}</TableCell>
+                   <TableCell className="text-right font-medium">
+                    {formatCurrency(item.price * item.quantity)}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       <UpdateQuantityButtons

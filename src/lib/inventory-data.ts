@@ -7,6 +7,7 @@ export const initialInventory: InventoryItem[] = [
     description: "Ergonomic wireless mouse with a long-lasting battery.",
     quantity: 42,
     category: "Electronics",
+    price: 29.99,
   },
   {
     id: "2",
@@ -14,6 +15,7 @@ export const initialInventory: InventoryItem[] = [
     description: "RGB mechanical keyboard with blue switches.",
     quantity: 15,
     category: "Electronics",
+    price: 89.99,
   },
   {
     id: "3",
@@ -21,6 +23,7 @@ export const initialInventory: InventoryItem[] = [
     description: "Ergonomic office chair with lumbar support.",
     quantity: 8,
     category: "Furniture",
+    price: 250.0,
   },
   {
     id: "4",
@@ -28,6 +31,7 @@ export const initialInventory: InventoryItem[] = [
     description: "Adjustable height standing desk, 48-inch.",
     quantity: 5,
     category: "Furniture",
+    price: 499.99,
   },
   {
     id: "5",
@@ -35,6 +39,7 @@ export const initialInventory: InventoryItem[] = [
     description: "Aluminum laptop stand for better ergonomics.",
     quantity: 30,
     category: "Accessories",
+    price: 45.5,
   },
   {
     id: "6",
@@ -42,6 +47,7 @@ export const initialInventory: InventoryItem[] = [
     description: "7-in-1 USB-C hub with HDMI, SD card reader, and USB 3.0 ports.",
     quantity: 25,
     category: "Accessories",
+    price: 39.99,
   },
   {
     id: "7",
@@ -49,6 +55,7 @@ export const initialInventory: InventoryItem[] = [
     description: "A5 lined notebooks for note-taking.",
     quantity: 112,
     category: "Office Supplies",
+    price: 12.99,
   },
 ];
 

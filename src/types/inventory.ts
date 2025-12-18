@@ -4,4 +4,5 @@ export type InventoryItem = {
   description: string;
   quantity: number;
   category: string;
+  price: number;
 };

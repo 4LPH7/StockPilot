@@ -40,6 +40,7 @@ const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   description: z.string().optional(),
   quantity: z.coerce.number().int().min(0, "Quantity cannot be negative."),
+  price: z.coerce.number().min(0, "Price cannot be negative."),
   category: z.string().min(1, "Please select a category."),
 });
 
@@ -59,6 +60,7 @@ export function AddItemDialog({ onAddItem }: AddItemDialogProps) {
       name: "",
       description: "",
       quantity: 0,
+      price: 0,
       category: "",
     },
   });
@@ -68,6 +70,7 @@ export function AddItemDialog({ onAddItem }: AddItemDialogProps) {
       name: values.name,
       description: values.description || "",
       quantity: values.quantity,
+      price: values.price,
       category: values.category,
     });
     toast({
@@ -140,6 +143,20 @@ export function AddItemDialog({ onAddItem }: AddItemDialogProps) {
               />
               <FormField
                 control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Price</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="$0.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+             <FormField
+                control={form.control}
                 name="category"
                 render={({ field }) => (
                   <FormItem>
@@ -162,7 +179,6 @@ export function AddItemDialog({ onAddItem }: AddItemDialogProps) {
                   </FormItem>
                 )}
               />
-            </div>
             <DialogFooter>
               <Button type="submit">Add Item</Button>
             </DialogFooter>
