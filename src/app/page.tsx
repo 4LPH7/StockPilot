@@ -42,7 +42,11 @@ export default function Home() {
       <Header onAddItem={handleAddItem} />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <InventoryStats items={inventory} />
-        <InventoryActions searchTerm={searchTerm} onSearch={setSearchTerm} />
+        <InventoryActions 
+          searchTerm={searchTerm} 
+          onSearch={setSearchTerm}
+          inventory={filteredInventory}
+        />
         <InventoryTable
           items={filteredInventory}
           onUpdateQuantity={handleUpdateQuantity}
