@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { EditItemDialog } from "./edit-item-dialog";
 import DeleteItemButton from "./delete-item-button";
 import Image from "next/image";
@@ -59,50 +60,70 @@ export default function InventoryTable({ items, onUpdateItem, onDeleteItem }: In
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40%]">Item</TableHead>
-                <TableHead className="hidden md:table-cell">Category</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-center">Quantity</TableHead>
-                <TableHead className="hidden sm:table-cell text-right">Total Value</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id} className="transition-colors">
-                  <TableCell>
-                    <div className="font-medium">{item.name}</div>
-                    <div className="hidden text-sm text-muted-foreground md:inline">
-                      {item.description}
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <Badge variant="secondary">{item.category}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                  <TableCell className="text-center font-medium">{item.quantity}</TableCell>
-                   <TableCell className="hidden sm:table-cell text-right font-medium">
-                    {formatCurrency(item.price * item.quantity)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <EditItemDialog
-                        item={item}
-                        onUpdateItem={onUpdateItem}
-                      />
-                      <DeleteItemButton
-                        itemId={item.id}
-                        onDeleteItem={onDeleteItem}
-                      />
-                    </div>
-                  </TableCell>
+          <TooltipProvider>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40%]">Item</TableHead>
+                  <TableHead className="hidden md:table-cell">Category</TableHead>
+                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-center">Quantity</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">Total Value</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => (
+                  <TableRow key={item.id} className="transition-colors">
+                    <TableCell>
+                      <div className="font-medium">{item.name}</div>
+                      <div className="hidden text-sm text-muted-foreground md:inline">
+                        {item.description}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Badge variant="secondary">{item.category}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
+                    <TableCell className="text-center font-medium">{item.quantity}</TableCell>
+                     <TableCell className="hidden sm:table-cell text-right font-medium">
+                      {formatCurrency(item.price * item.quantity)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div>
+                              <EditItemDialog
+                                item={item}
+                                onUpdateItem={onUpdateItem}
+                              />
+                             </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Edit Item</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                           <TooltipTrigger asChild>
+                             <div>
+                               <DeleteItemButton
+                                itemId={item.id}
+                                onDeleteItem={onDeleteItem}
+                              />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Delete Item</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TooltipProvider>
         </div>
       </CardContent>
     </Card>
