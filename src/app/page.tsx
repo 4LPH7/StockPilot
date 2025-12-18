@@ -19,11 +19,11 @@ export default function Home() {
     ]);
   };
 
-  const handleUpdateQuantity = (itemId: string, amount: number) => {
+  const handleUpdateItem = (itemId: string, updatedItem: Omit<InventoryItem, "id">) => {
     setInventory((prev) =>
       prev.map((item) =>
         item.id === itemId
-          ? { ...item, quantity: Math.max(0, item.quantity + amount) }
+          ? { ...item, ...updatedItem }
           : item
       )
     );
@@ -49,7 +49,7 @@ export default function Home() {
         />
         <InventoryTable
           items={filteredInventory}
-          onUpdateQuantity={handleUpdateQuantity}
+          onUpdateItem={handleUpdateItem}
           onDeleteItem={handleDeleteItem}
         />
       </main>

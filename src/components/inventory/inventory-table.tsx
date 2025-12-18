@@ -9,18 +9,18 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import UpdateQuantityButtons from "./update-quantity-buttons";
+import { EditItemDialog } from "./edit-item-dialog";
 import DeleteItemButton from "./delete-item-button";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 type InventoryTableProps = {
   items: InventoryItem[];
-  onUpdateQuantity: (itemId: string, amount: number) => void;
+  onUpdateItem: (itemId: string, item: Omit<InventoryItem, 'id'>) => void;
   onDeleteItem: (itemId: string) => void;
 };
 
-export default function InventoryTable({ items, onUpdateQuantity, onDeleteItem }: InventoryTableProps) {
+export default function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryTableProps) {
   if (items.length === 0) {
     const emptyStateImage = PlaceHolderImages.find(p => p.id === "empty-state-box");
     return (
@@ -89,9 +89,9 @@ export default function InventoryTable({ items, onUpdateQuantity, onDeleteItem }
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <UpdateQuantityButtons
-                        itemId={item.id}
-                        onUpdateQuantity={onUpdateQuantity}
+                      <EditItemDialog
+                        item={item}
+                        onUpdateItem={onUpdateItem}
                       />
                       <DeleteItemButton
                         itemId={item.id}
