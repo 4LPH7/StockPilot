@@ -7,29 +7,29 @@ import { getFirestore } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
-  if (!getApps().length) {
-    // Important! initializeApp() is called without any arguments because Firebase App Hosting
-    // integrates with the initializeApp() function to provide the environment variables needed to
-    // populate the FirebaseOptions in production. It is critical that we attempt to call initializeApp()
-    // without arguments.
+  // Check if we're on the client side and if Firebase hasn't been initialized yet.
+  if (typeof window !== 'undefined' && !getApps().length) {
+    // Firebase initialization is safe to run on the client.
     let firebaseApp;
     try {
-      // Attempt to initialize via Firebase App Hosting environment variables
+      // For Firebase App Hosting, this will be initialized automatically.
       firebaseApp = initializeApp();
     } catch (e) {
-      // Only warn in production because it's normal to use the firebaseConfig to initialize
-      // during development
+      // For other environments (like local dev or Netlify), fall back to the config object.
       if (process.env.NODE_ENV === "production") {
         console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
       }
       firebaseApp = initializeApp(firebaseConfig);
     }
-
     return getSdks(firebaseApp);
+  } else if (getApps().length) {
+    // If already initialized, return the existing instance.
+    return getSdks(getApp());
   }
-
-  // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
+  
+  // On the server, return a non-initialized structure to avoid errors.
+  // The app will function correctly once it hydrates on the client.
+  return { firebaseApp: null, auth: null, firestore: null };
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
