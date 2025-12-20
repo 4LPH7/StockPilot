@@ -2,34 +2,29 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
+let firebaseApp: FirebaseApp;
+let auth: Auth;
+let firestore: Firestore;
+
 export function initializeFirebase() {
-  // Check if we're on the client side and if Firebase hasn't been initialized yet.
-  if (typeof window !== 'undefined' && !getApps().length) {
-    // Firebase initialization is safe to run on the client.
-    let firebaseApp;
-    try {
-      // For Firebase App Hosting, this will be initialized automatically.
-      firebaseApp = initializeApp();
-    } catch (e) {
-      // For other environments (like local dev or Netlify), fall back to the config object.
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
-      firebaseApp = initializeApp(firebaseConfig);
+  if (typeof window !== 'undefined') {
+    if (!getApps().length) {
+      initializeApp(firebaseConfig);
     }
-    return getSdks(firebaseApp);
-  } else if (getApps().length) {
-    // If already initialized, return the existing instance.
-    return getSdks(getApp());
+    const app = getApp();
+    const services = getSdks(app);
+    firebaseApp = services.firebaseApp;
+    auth = services.auth;
+    firestore = services.firestore;
   }
   
-  // On the server, return a non-initialized structure to avoid errors.
-  // The app will function correctly once it hydrates on the client.
-  return { firebaseApp: null, auth: null, firestore: null };
+  // On the server, this will be undefined, but the hooks are designed to handle this
+  // by only running on the client.
+  return { firebaseApp, auth, firestore };
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
