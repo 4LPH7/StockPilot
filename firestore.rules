@@ -1,0 +1,117 @@
+/**
+ * This ruleset defines the security model for a public catalog application.
+ *
+ * Core Philosophy:
+ * The security model is "Public Read, Authenticated Write". This means that all
+ * data, such as categories and items, is publicly visible to any client, including
+ * unauthenticated users. However, any action that modifies data (creating,
+ * updating, or deleting) requires the user to be signed in. This provides a
+ * secure baseline for a professional application by preventing anonymous
+ * vandalism while allowing open access for viewers.
+ *
+ * Data Structure:
+ * The data is organized hierarchically. A top-level collection `/categories`
+ * holds all category documents. Each category document can contain a nested
+ * subcollection of `/items`, which holds the items belonging to that category.
+ * - /categories/{categoryId}
+ * - /categories/{categoryId}/items/{itemId}
+ *
+ * Key Security Decisions:
+ * - Public Read Access: To support a public-facing catalog, `get` and `list`
+ *   operations are permitted for everyone.
+ * - Authenticated Writes: All write operations (`create`, `update`, `delete`) are
+ *   restricted to signed-in users (`request.auth != null`). This is a foundational
+ *   security measure. If more granular, role-based access is needed in the future
+ *   (e.g., admins, editors), the data model would need to be updated with
+ *   ownership or role fields.
+ * - Relational Integrity: The rules enforce that documents contain internal IDs
+ *   that match their path (`categoryId`, `itemId`). They also ensure that the
+ *   parent category reference (`categoryId`) on an item is correct. These
+ *   critical relational fields are enforced as immutable after a document is created.
+ *
+ * Denormalization for Authorization:
+ * This ruleset does not require denormalization for authorization because there
+ * are no user-specific ownership or role checks. All authorization decisions
+ * are based on the user's authentication state (`isSignedIn`).
+ *
+ * Structural Segregation:
+ * The use of a top-level `/categories` collection with a nested `/items`
+ * subcollection is a strong example of structural segregation. It creates a
+ * clear and secure boundary, making the rules simple, performant, and easy to
+ * reason about.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------------
+    // Helper Functions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Returns true if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * On create, validates that the new document's internal `id` field
+     * matches the document ID in the path.
+     */
+    function newDocIdMatchesPath(docId) {
+      return request.resource.data.id == docId;
+    }
+    
+    /**
+     * On create, validates that a new item's internal `categoryId` field
+     * matches the parent category ID from the path.
+     */
+    function newItemParentIdMatchesPath(categoryId) {
+      return request.resource.data.categoryId == categoryId;
+    }
+
+    /**
+     * On update, validates that a critical relational field is immutable.
+     * This prevents re-assigning documents to different parents or changing their ID.
+     */
+    function fieldIsImmutable(fieldName) {
+      return request.resource.data[fieldName] == resource.data[fieldName];
+    }
+
+    // ------------------------------------------------------------------------
+    // Collection Rules
+    // ------------------------------------------------------------------------
+
+    /**
+     * @description Manages categories for inventory items. Publicly readable, but
+     *              only authenticated users can create, update, or delete them.
+     * @path /categories/{categoryId}
+     * @allow (get) Any user, signed in or not, can read a specific category.
+     * @deny (create) An unauthenticated user attempts to create a new category.
+     * @principle Public Read with Authenticated Writes, and Relational Integrity.
+     */
+    match /categories/{categoryId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && newDocIdMatchesPath(categoryId);
+      allow update: if isSignedIn() && resource != null && fieldIsImmutable('id');
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Manages items within a specific category. Publicly readable, but
+     *              only authenticated users can create, update, or delete them.
+     * @path /categories/{categoryId}/items/{itemId}
+     * @allow (create) A signed-in user creates a new item with a valid `id` and `categoryId`.
+     * @deny (update) A signed-in user tries to change an item's `categoryId` after creation.
+     * @principle Public Read with Authenticated Writes, and Relational Integrity.
+     */
+    match /categories/{categoryId}/items/{itemId} {
+      allow get: if true;
+      allow list: if true; // Note: `list` on a subcollection requires specifying the full parent path.
+      allow create: if isSignedIn() && newDocIdMatchesPath(itemId) && newItemParentIdMatchesPath(categoryId);
+      allow update: if isSignedIn() && resource != null && fieldIsImmutable('id') && fieldIsImmutable('categoryId');
+      allow delete: if isSignedIn() && resource != null;
+    }
+  }
+}

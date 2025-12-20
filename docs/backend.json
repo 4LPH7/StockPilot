@@ -1,0 +1,111 @@
+{
+  "entities": {
+    "Item": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Item",
+      "type": "object",
+      "description": "Represents an item in the inventory.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the item."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the item."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the item."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Current quantity of the item in stock."
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to Category. (Relationship: Category 1:N Item)"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "quantity",
+        "categoryId"
+      ]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Represents a category for items.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the category."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the category."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the category."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores category information. Includes 'categoryId' as a document ID.",
+          "params": [
+            {
+              "name": "categoryId",
+              "description": "Unique identifier for the category."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/categories/{categoryId}/items/{itemId}",
+        "definition": {
+          "entityName": "Item",
+          "schema": {
+            "$ref": "#/backend/entities/Item"
+          },
+          "description": "Stores item data within a specific category. Includes 'categoryId' for the parent category and 'itemId' as the unique item identifier.",
+          "params": [
+            {
+              "name": "categoryId",
+              "description": "Unique identifier for the category."
+            },
+            {
+              "name": "itemId",
+              "description": "Unique identifier for the item."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to optimize for security, scalability, and ease of querying, following the principles of Authorization Independence, Structural Segregation, and Access Modeling. Categories are stored in a root-level collection, while items are stored in a subcollection under each category. This segregation allows for clear ownership and simplifies security rules.\n\nAuthorization Independence is achieved by storing all information necessary for authorization directly within the item document. Specifically, while not applicable in this design (as there is no user based access), if user access was necessary we would denormalize it (e.g. storing the category creator's ID in the item document).\n\nThe structure supports the QAPs by using Structural Segregation (each collection has a homogeneous security posture) and appropriate Access Modeling (path-based ownership). Specifically:\n\n*   Categories:\n    *   Listing is allowed with rules applied at the collection level for basic access and potentially more restrictive rules based on application logic (e.g., only allow listing categories that are 'active').\n*   Items:\n    *   Listing is allowed within the context of a specific category. Rules can be written to allow listing only if the user has access to the category."
+  }
+}
