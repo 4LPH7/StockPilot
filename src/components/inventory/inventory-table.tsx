@@ -1,4 +1,5 @@
 import type { InventoryItem } from "@/types/inventory";
+import type { Currency } from "@/app/page";
 import {
   Table,
   TableBody,
@@ -19,9 +20,11 @@ type InventoryTableProps = {
   items: InventoryItem[];
   onUpdateItem: (itemId: string, item: Omit<InventoryItem, 'id'>) => void;
   onDeleteItem: (itemId: string) => void;
+  currency: Currency;
+  conversionRate: number;
 };
 
-export default function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryTableProps) {
+export default function InventoryTable({ items, onUpdateItem, onDeleteItem, currency, conversionRate }: InventoryTableProps) {
   if (items.length === 0) {
     const emptyStateImage = PlaceHolderImages.find(p => p.id === "empty-state-box");
     return (
@@ -45,11 +48,18 @@ export default function InventoryTable({ items, onUpdateItem, onDeleteItem }: In
       </Card>
     );
   }
+
+  const convertPrice = (price: number) => {
+    if (currency === 'USD') {
+      return price / conversionRate;
+    }
+    return price;
+  };
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: currency,
     }).format(amount);
   };
 
@@ -73,54 +83,57 @@ export default function InventoryTable({ items, onUpdateItem, onDeleteItem }: In
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item) => (
-                  <TableRow key={item.id} className="transition-colors">
-                    <TableCell>
-                      <div className="font-medium">{item.name}</div>
-                      <div className="hidden text-sm text-muted-foreground md:inline">
-                        {item.description}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <Badge variant="secondary">{item.category}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                    <TableCell className="text-center font-medium">{item.quantity}</TableCell>
-                     <TableCell className="hidden sm:table-cell text-right font-medium">
-                      {formatCurrency(item.price * item.quantity)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div>
-                              <EditItemDialog
-                                item={item}
-                                onUpdateItem={onUpdateItem}
-                              />
-                             </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Edit Item</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                           <TooltipTrigger asChild>
-                             <div>
-                               <DeleteItemButton
-                                itemId={item.id}
-                                onDeleteItem={onDeleteItem}
-                              />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Delete Item</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {items.map((item) => {
+                  const convertedPrice = convertPrice(item.price);
+                  return (
+                    <TableRow key={item.id} className="transition-colors">
+                      <TableCell>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="hidden text-sm text-muted-foreground md:inline">
+                          {item.description}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant="secondary">{item.category}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{formatCurrency(convertedPrice)}</TableCell>
+                      <TableCell className="text-center font-medium">{item.quantity}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-right font-medium">
+                        {formatCurrency(convertedPrice * item.quantity)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <EditItemDialog
+                                  item={item}
+                                  onUpdateItem={onUpdateItem}
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Edit Item</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <DeleteItemButton
+                                  itemId={item.id}
+                                  onDeleteItem={onDeleteItem}
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Delete Item</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TooltipProvider>

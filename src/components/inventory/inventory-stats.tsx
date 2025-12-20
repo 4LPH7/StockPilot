@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import type { InventoryItem } from '@/types/inventory';
+import type { Currency } from '@/app/page';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   PieChart,
@@ -19,15 +20,34 @@ import { BarChart as BarChartIcon, DollarSign, Package, PieChart as PieChartIcon
 
 type InventoryStatsProps = {
   items: InventoryItem[];
+  currency: Currency;
+  conversionRate: number;
 };
 
 const COLORS = ['#673AB7', '#D1C4E9', '#7C4DFF', '#512DA8', '#B39DDB'];
 
-export default function InventoryStats({ items }: InventoryStatsProps) {
+export default function InventoryStats({ items, currency, conversionRate }: InventoryStatsProps) {
+    const convertPrice = (price: number) => {
+        if (currency === 'USD') {
+            return price / conversionRate;
+        }
+        return price;
+    };
+
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: currency,
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(value);
+    }
+
   const { totalValue, totalItems, categoryData, topItems } = useMemo(() => {
     const stats = items.reduce(
       (acc, item) => {
-        const itemValue = item.price * item.quantity;
+        const convertedPrice = convertPrice(item.price);
+        const itemValue = convertedPrice * item.quantity;
         acc.totalValue += itemValue;
         acc.totalItems += item.quantity;
         
@@ -53,15 +73,8 @@ export default function InventoryStats({ items }: InventoryStatsProps) {
       categoryData: categoryChartData,
       topItems: topItemsData,
     };
-  }, [items]);
+  }, [items, currency, conversionRate]);
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
   
   const CustomTooltip = ({ active, payload, label, isPie }: any) => {
     if (active && payload && payload.length) {

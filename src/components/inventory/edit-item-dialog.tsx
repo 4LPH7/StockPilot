@@ -40,7 +40,7 @@ const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   description: z.string().optional(),
   quantity: z.coerce.number().int().min(0, "Quantity cannot be negative."),
-  price: z.coerce.number().min(0, "Price cannot be negative."),
+  price: z.coerce.number().min(0, "Price must be entered in INR and cannot be negative."),
   category: z.string().min(1, "Please select a category."),
 });
 
@@ -89,7 +89,7 @@ export function EditItemDialog({ item, onUpdateItem }: EditItemDialogProps) {
         <DialogHeader>
           <DialogTitle>Edit Item</DialogTitle>
           <DialogDescription>
-            Update the details for this inventory item.
+            Update the details for this inventory item. Prices should be in INR.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -142,9 +142,9 @@ export function EditItemDialog({ item, onUpdateItem }: EditItemDialogProps) {
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price</FormLabel>
+                    <FormLabel>Price (INR)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="$0.00" {...field} />
+                      <Input type="number" step="0.01" placeholder="₹0.00" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
