@@ -6,7 +6,7 @@ Transform StockPilot from a Firebase Studio starter project into a hardened, sec
 
 ## Phases
 
-- [ ] **Phase 1: Security, Auth & Repository Hygiene** - Enforce Firestore data isolation, environment variables, real authentication, repo cleanup, and initial README overhaul.
+- [x] **Phase 1: Security, Auth & Repository Hygiene** - Enforce Firestore data isolation, environment variables, real authentication, repo cleanup, and initial README overhaul.
 - [ ] **Phase 2: Core Inventory Enhancements** - Implement low-stock alerts, movement audit logs, category filters, and CSV/Excel import.
 - [ ] **Phase 3: Engineering Rigor & Presentation** - Add unit & E2E tests, GitHub Actions CI workflow, license, and portfolio polish.
 
@@ -35,8 +35,8 @@ Transform StockPilot from a Firebase Studio starter project into a hardened, sec
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Security Rules, Per-User Data Isolation, and Authentication
-- [ ] 01-02: Repository Cleanup, Brand Unification, and Portfolio README
+- [x] 01-01: Security Rules, Per-User Data Isolation, and Authentication
+- [x] 01-02: Repository Cleanup, Brand Unification, and Portfolio README
 
 ### Phase 2: Core Inventory Enhancements
 **Goal**: Provide critical inventory workflows including low-stock alerts, stock movement audit trail, category filtering, and bulk data import.
