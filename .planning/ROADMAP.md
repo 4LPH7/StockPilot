@@ -32,6 +32,11 @@ Transform StockPilot from a Firebase Studio starter project into a hardened, sec
   3. No secrets or project IDs are hardcoded in source files.
   4. Repository is cleanly configured for Netlify without Firebase Studio remnants.
   5. Application branding is consistent as "StockPilot" across UI and metadata.
+**Plans**: 2 plans
+
+Plans:
+- [ ] 01-01: Security Rules, Per-User Data Isolation, and Authentication
+- [ ] 01-02: Repository Cleanup, Brand Unification, and Portfolio README
 
 ### Phase 2: Core Inventory Enhancements
 **Goal**: Provide critical inventory workflows including low-stock alerts, stock movement audit trail, category filtering, and bulk data import.
