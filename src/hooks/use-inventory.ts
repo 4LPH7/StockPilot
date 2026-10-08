@@ -1,30 +1,26 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState } from "react";
 import type { InventoryItem } from "@/types/inventory";
 import { useCollection, useFirebase, useUser, useMemoFirebase } from "@/firebase";
-import { collection, doc, setDoc, addDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
-import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
+import { collection, doc } from "firebase/firestore";
 import { 
   addDocumentNonBlocking,
   deleteDocumentNonBlocking,
   setDocumentNonBlocking 
 } from "@/firebase/non-blocking-updates";
 
-
 export function useInventory() {
-  const { firestore, auth } = useFirebase();
+  const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
   const [searchTerm, setSearchTerm] = useState("");
 
-  const itemsCollection = useMemoFirebase(() => firestore ? collection(firestore, "items") : null, [firestore]);
+  const itemsCollection = useMemoFirebase(
+    () => (firestore && user ? collection(firestore, "users", user.uid, "items") : null),
+    [firestore, user]
+  );
+  
   const { data: inventory, isLoading: isInventoryLoading } = useCollection<InventoryItem>(itemsCollection);
-
-  useEffect(() => {
-    if (!isUserLoading && !user && auth) {
-      initiateAnonymousSignIn(auth);
-    }
-  }, [isUserLoading, user, auth]);
 
   const handleAddItem = (item: Omit<InventoryItem, "id">) => {
     if (!itemsCollection) return;
@@ -35,22 +31,24 @@ export function useInventory() {
     itemId: string,
     updatedItem: Omit<InventoryItem, "id">
   ) => {
-    if (!firestore) return;
-    const docRef = doc(firestore, "items", itemId);
+    if (!firestore || !user) return;
+    const docRef = doc(firestore, "users", user.uid, "items", itemId);
     setDocumentNonBlocking(docRef, updatedItem, { merge: true });
   };
 
   const handleDeleteItem = (itemId: string) => {
-    if (!firestore) return;
-    const docRef = doc(firestore, "items", itemId);
+    if (!firestore || !user) return;
+    const docRef = doc(firestore, "users", user.uid, "items", itemId);
     deleteDocumentNonBlocking(docRef);
   };
   
-  const loading = isInventoryLoading || isUserLoading;
+  const loading = isUserLoading || (!!user && isInventoryLoading);
 
   return {
     inventory: inventory || [],
     loading,
+    user,
+    isUserLoading,
     searchTerm,
     setSearchTerm,
     handleAddItem,

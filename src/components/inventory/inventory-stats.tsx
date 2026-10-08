@@ -46,8 +46,8 @@ export default function InventoryStats({ items, currency, conversionRate }: Inve
   const { totalValue, totalItems, categoryData, topItems } = useMemo(() => {
     const stats = items.reduce(
       (acc, item) => {
-        const convertedPrice = convertPrice(item.price);
-        const itemValue = convertedPrice * item.quantity;
+        const itemPrice = currency === 'USD' ? item.price / conversionRate : item.price;
+        const itemValue = itemPrice * item.quantity;
         acc.totalValue += itemValue;
         acc.totalItems += item.quantity;
         
