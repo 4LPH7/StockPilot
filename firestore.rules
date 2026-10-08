@@ -1,45 +1,41 @@
-/**
- * This ruleset defines the security model for a public catalog application.
- *
- * Core Philosophy:
- * The security model is "Public Read, Authenticated Write". This means that all
- * data is publicly visible to any client, including unauthenticated users.
- * However, any action that modifies data (creating, updating, or deleting)
- * requires the user to be signed in. This provides a secure baseline for a
- * professional application by preventing anonymous vandalism while allowing
- * open access for viewers.
- *
- * Data Structure:
- * The data is stored in a top-level collection `/items`.
- * - /items/{itemId}
- *
- * Key Security Decisions:
- * - Public Read Access: To support a public-facing catalog, `get` and `list`
- *   operations are permitted for everyone.
- * - Authenticated Writes: All write operations (`create`, `update`, `delete`) are
- *   restricted to signed-in users (`request.auth != null`). This is a foundational
- *   security measure.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is authenticated.
-    function isSignedIn() {
+    // Helper functions for authentication and ownership
+    function isAuthenticated() {
       return request.auth != null;
     }
 
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Schema validation for an inventory item
+    function isValidItem(data) {
+      return data.name is string 
+        && data.name.size() >= 1 
+        && data.name.size() <= 100
+        && (data.description == null || (data.description is string && data.description.size() <= 500))
+        && data.category is string 
+        && data.category.size() >= 1 
+        && data.category.size() <= 50
+        && data.quantity is int 
+        && data.quantity >= 0
+        && (data.price is int || data.price is float) 
+        && data.price >= 0;
+    }
+
     /**
-     * @description Manages inventory items. Publicly readable, but only
-     *              authenticated users can create, update, or delete them.
-     * @path /items/{itemId}
-     * @allow (get, list) Any user, signed in or not, can read item data.
-     * @allow (write) Any signed-in user can create, update, or delete an item.
-     * @deny (write) An unauthenticated user attempts to modify an item.
+     * User-isolated inventory subcollection.
+     * Only the authenticated owner can read, query, create, update, or delete items.
+     * Public access is completely denied.
      */
-    match /items/{itemId} {
-      allow get, list: if true;
-      allow write: if isSignedIn();
+    match /users/{userId}/items/{itemId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidItem(request.resource.data);
+      allow update: if isOwner(userId) && isValidItem(request.resource.data);
+      allow delete: if isOwner(userId);
     }
   }
 }

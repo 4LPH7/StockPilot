@@ -42,7 +42,7 @@ export default function InventoryTable({ items, onUpdateItem, onDeleteItem, curr
             )}
           <h3 className="text-2xl font-bold tracking-tight">Your inventory is empty!</h3>
           <p className="text-muted-foreground">
-            Add your first item using the 'Add Item' button to get started.
+            Add your first item using the &apos;Add Item&apos; button to get started.
           </p>
         </CardContent>
       </Card>
