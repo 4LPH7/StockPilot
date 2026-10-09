@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { BarChart as BarChartIcon, DollarSign, Package, PieChart as PieChartIcon } from 'lucide-react';
+import { BarChart as BarChartIcon, DollarSign, Package, PieChart as PieChartIcon, AlertTriangle } from 'lucide-react';
 
 type InventoryStatsProps = {
   items: InventoryItem[];
@@ -43,7 +43,7 @@ export default function InventoryStats({ items, currency, conversionRate }: Inve
         }).format(value);
     }
 
-  const { totalValue, totalItems, categoryData, topItems } = useMemo(() => {
+  const { totalValue, totalItems, lowStockCount, categoryData, topItems } = useMemo(() => {
     const stats = items.reduce(
       (acc, item) => {
         const itemPrice = currency === 'USD' ? item.price / conversionRate : item.price;
@@ -66,10 +66,12 @@ export default function InventoryStats({ items, currency, conversionRate }: Inve
       .sort((a, b) => b.value - a.value);
     
     const topItemsData = stats.allItems.sort((a,b) => b.value - a.value).slice(0, 5);
+    const lowStockAlerts = items.filter((item) => item.quantity <= (item.lowStockThreshold ?? 10)).length;
 
     return {
       totalValue: stats.totalValue,
       totalItems: stats.totalItems,
+      lowStockCount: lowStockAlerts,
       categoryData: categoryChartData,
       topItems: topItemsData,
     };
@@ -100,7 +102,7 @@ export default function InventoryStats({ items, currency, conversionRate }: Inve
 
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Inventory Value</CardTitle>
@@ -119,6 +121,20 @@ export default function InventoryStats({ items, currency, conversionRate }: Inve
         <CardContent>
           <div className="text-2xl font-bold">{totalItems.toLocaleString()}</div>
           <p className="text-xs text-muted-foreground">Total number of individual items</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Low Stock Alerts</CardTitle>
+          <AlertTriangle className={`h-4 w-4 ${categoryData ? (lowStockCount > 0 ? "text-amber-500" : "text-muted-foreground") : ""}`} />
+        </CardHeader>
+        <CardContent>
+          <div className={`text-2xl font-bold ${lowStockCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+            {lowStockCount}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {lowStockCount === 0 ? "All items stocked adequately" : `${lowStockCount} item${lowStockCount === 1 ? "" : "s"} at or below threshold`}
+          </p>
         </CardContent>
       </Card>
       <Card className="lg:col-span-2 xl:col-span-1">

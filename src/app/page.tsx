@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useInventory } from "@/hooks/use-inventory";
 import Header from "@/components/layout/header";
 import InventoryActions from "@/components/inventory/inventory-actions";
@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AuthDialog } from "@/components/auth/auth-dialog";
 import { ShieldCheck, LogIn, Lock } from "lucide-react";
+import { categories as defaultCategories } from "@/lib/inventory-data";
 
 export type Currency = "INR" | "USD";
 
@@ -28,13 +29,44 @@ export default function Home() {
   } = useInventory();
   const [currency, setCurrency] = useState<Currency>("INR");
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   
   // Approximate conversion rate
   const usdToInrRate = 83.5;
 
-  const filteredInventory = inventory.filter((item) =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const allCategories = useMemo(() => {
+    const customCats = Array.from(new Set(inventory.map((item) => item.category).filter(Boolean)));
+    const merged = Array.from(new Set([...defaultCategories, ...customCats]));
+    return merged.sort();
+  }, [inventory]);
+
+  const filteredInventory = useMemo(() => {
+    return inventory.filter((item) => {
+      // 1. Text search across name, category, and description
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch =
+        item.name.toLowerCase().includes(searchLower) ||
+        item.category.toLowerCase().includes(searchLower) ||
+        (item.description && item.description.toLowerCase().includes(searchLower));
+      if (!matchesSearch) return false;
+
+      // 2. Category filter
+      if (categoryFilter !== "all" && item.category !== categoryFilter) {
+        return false;
+      }
+
+      // 3. Status filter
+      if (statusFilter !== "all") {
+        const threshold = item.lowStockThreshold ?? 10;
+        if (statusFilter === "out_of_stock" && item.quantity !== 0) return false;
+        if (statusFilter === "low_stock" && (item.quantity === 0 || item.quantity > threshold)) return false;
+        if (statusFilter === "in_stock" && item.quantity <= threshold) return false;
+      }
+
+      return true;
+    });
+  }, [inventory, searchTerm, categoryFilter, statusFilter]);
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -66,7 +98,8 @@ export default function Home() {
         )}
 
         {loading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <Skeleton className="h-28" />
             <Skeleton className="h-28" />
             <Skeleton className="h-28" />
             <Skeleton className="h-28" />
@@ -79,6 +112,11 @@ export default function Home() {
         <InventoryActions
           searchTerm={searchTerm}
           onSearch={setSearchTerm}
+          selectedCategory={categoryFilter}
+          onCategoryChange={setCategoryFilter}
+          selectedStatus={statusFilter}
+          onStatusChange={setStatusFilter}
+          categories={allCategories}
           onAddItem={handleAddItem}
           inventory={filteredInventory}
         />

@@ -42,6 +42,7 @@ const formSchema = z.object({
   quantity: z.coerce.number().int().min(0, "Quantity cannot be negative."),
   price: z.coerce.number().min(0, "Price must be entered in INR and cannot be negative."),
   category: z.string().min(1, "Please select a category."),
+  lowStockThreshold: z.coerce.number().int().min(0, "Threshold must be >= 0").default(10),
 });
 
 type EditItemFormValues = z.infer<typeof formSchema>;
@@ -63,13 +64,15 @@ export function EditItemDialog({ item, onUpdateItem }: EditItemDialogProps) {
       quantity: item.quantity,
       price: item.price,
       category: item.category,
+      lowStockThreshold: item.lowStockThreshold ?? 10,
     },
   });
 
   function onSubmit(values: EditItemFormValues) {
     onUpdateItem(item.id, {
         ...values,
-        description: values.description || ""
+        description: values.description || "",
+        lowStockThreshold: values.lowStockThreshold ?? 10,
     });
     toast({
       title: "Success!",
@@ -151,7 +154,8 @@ export function EditItemDialog({ item, onUpdateItem }: EditItemDialogProps) {
                 )}
               />
             </div>
-             <FormField
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
                 control={form.control}
                 name="category"
                 render={({ field }) => (
@@ -160,7 +164,7 @@ export function EditItemDialog({ item, onUpdateItem }: EditItemDialogProps) {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
+                          <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -175,6 +179,20 @@ export function EditItemDialog({ item, onUpdateItem }: EditItemDialogProps) {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="lowStockThreshold"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Low Stock Alert</FormLabel>
+                    <FormControl>
+                      <Input type="number" min="0" placeholder="10" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <DialogFooter>
               <Button type="submit">Save Changes</Button>
             </DialogFooter>
