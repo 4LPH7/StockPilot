@@ -23,7 +23,8 @@ service cloud.firestore {
         && data.quantity is int 
         && data.quantity >= 0
         && (data.price is int || data.price is float) 
-        && data.price >= 0;
+        && data.price >= 0
+        && (!('lowStockThreshold' in data) || (data.lowStockThreshold is int && data.lowStockThreshold >= 0));
     }
 
     /**

@@ -74,10 +74,11 @@ export default function InventoryTable({ items, onUpdateItem, onDeleteItem, curr
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40%]">Item</TableHead>
+                  <TableHead className="w-[35%]">Item</TableHead>
                   <TableHead className="hidden md:table-cell">Category</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead className="text-center">Quantity</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
                   <TableHead className="hidden sm:table-cell text-right">Total Value</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -98,6 +99,21 @@ export default function InventoryTable({ items, onUpdateItem, onDeleteItem, curr
                       </TableCell>
                       <TableCell className="text-right">{formatCurrency(convertedPrice)}</TableCell>
                       <TableCell className="text-center font-medium">{item.quantity}</TableCell>
+                      <TableCell className="text-center">
+                        {item.quantity === 0 ? (
+                          <Badge variant="destructive" className="font-normal text-xs">
+                            Out of Stock
+                          </Badge>
+                        ) : item.quantity <= (item.lowStockThreshold ?? 10) ? (
+                          <Badge variant="secondary" className="border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-normal text-xs">
+                            Low Stock
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-normal text-xs">
+                            In Stock
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="hidden sm:table-cell text-right font-medium">
                         {formatCurrency(convertedPrice * item.quantity)}
                       </TableCell>

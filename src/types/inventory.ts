@@ -5,4 +5,5 @@ export type InventoryItem = {
   quantity: number;
   category: string;
   price: number;
+  lowStockThreshold?: number;
 };
