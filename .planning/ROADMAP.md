@@ -50,6 +50,12 @@ Plans:
   1. Low-stock items are visually highlighted and summarized in a dedicated dashboard stat card.
   2. Changes to item quantities create immutable audit records in a movements subcollection.
   3. Users can filter items by category and import catalogs via CSV or XLSX.
+**Plans**: 3 plans
+
+Plans:
+- [ ] 02-01: Low-Stock Thresholds, Status Indicators, and Enhanced Filtering
+- [ ] 02-02: Immutable Movement Audit Trail Subcollection and History Timeline
+- [ ] 02-03: Bulk Catalog Import with SheetJS, Pre-commit Validation Preview, and Sample CSV
 
 ### Phase 3: Engineering Rigor & Presentation
 **Goal**: Establish enterprise-grade development standards with automated testing, CI pipeline, accessibility audits, and open-source licensing.
