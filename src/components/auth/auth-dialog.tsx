@@ -20,17 +20,50 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, UserPlus, UserCheck, Chrome } from "lucide-react";
+import { LogIn, UserPlus, UserCheck, Chrome, AlertTriangle } from "lucide-react";
 
 interface AuthDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+function getAuthErrorMessage(error: any): string {
+  if (!error) return "An unexpected error occurred.";
+  const code = error.code || "";
+
+  switch (code) {
+    case "auth/unauthorized-domain":
+      const host = typeof window !== "undefined" ? window.location.hostname : "invisto.netlify.app";
+      return `Domain "${host}" is not authorized. Add "${host}" to Firebase Console > Authentication > Settings > Authorized domains.`;
+    case "auth/popup-closed-by-user":
+      return "The sign-in popup was closed before completing.";
+    case "auth/popup-blocked":
+      return "Pop-up was blocked by your browser. Please allow pop-ups for this site.";
+    case "auth/user-not-found":
+      return "No account found with this email. Please create an account.";
+    case "auth/wrong-password":
+    case "auth/invalid-credential":
+      return "Invalid email or password. Please try again.";
+    case "auth/email-already-in-use":
+      return "This email is already in use. Please sign in instead.";
+    case "auth/weak-password":
+      return "Password should be at least 6 characters long.";
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+    case "auth/operation-not-allowed":
+      return "This sign-in provider is disabled in Firebase Console. Enable it in Authentication > Sign-in method.";
+    case "auth/network-request-failed":
+      return "Network error. Please check your internet connection.";
+    default:
+      return error.message || "Authentication failed.";
+  }
+}
+
 export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const { auth } = useFirebase();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [domainError, setDomainError] = useState(false);
 
   // Email form state
   const [email, setEmail] = useState("");
@@ -39,6 +72,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const handleGoogleSignIn = async () => {
     if (!auth) return;
     setLoading(true);
+    setDomainError(false);
     try {
       await initiateGoogleSignIn(auth);
       toast({
@@ -47,10 +81,13 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       });
       onOpenChange(false);
     } catch (error: any) {
+      if (error?.code === "auth/unauthorized-domain") {
+        setDomainError(true);
+      }
       toast({
         variant: "destructive",
         title: "Sign In Failed",
-        description: error.message || "Could not sign in with Google.",
+        description: getAuthErrorMessage(error),
       });
     } finally {
       setLoading(false);
@@ -72,7 +109,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       toast({
         variant: "destructive",
         title: "Sign In Failed",
-        description: error.message || "Invalid email or password.",
+        description: getAuthErrorMessage(error),
       });
     } finally {
       setLoading(false);
@@ -94,7 +131,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       toast({
         variant: "destructive",
         title: "Sign Up Failed",
-        description: error.message || "Could not create account.",
+        description: getAuthErrorMessage(error),
       });
     } finally {
       setLoading(false);
@@ -115,7 +152,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       toast({
         variant: "destructive",
         title: "Guest Sign In Failed",
-        description: error.message || "Could not start guest session.",
+        description: getAuthErrorMessage(error),
       });
     } finally {
       setLoading(false);
@@ -131,6 +168,21 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
             Access your private inventory and real-time stock telemetry.
           </DialogDescription>
         </DialogHeader>
+
+        {domainError && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs text-amber-200">
+            <div className="flex items-center gap-2 font-semibold text-amber-300">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>Domain Not Authorized in Firebase</span>
+            </div>
+            <p className="mt-1.5 leading-relaxed text-amber-200/90">
+              Firebase blocked Google Sign-In because <strong>{typeof window !== "undefined" ? window.location.hostname : "this domain"}</strong> has not been authorized yet.
+            </p>
+            <div className="mt-2 text-[11px] text-amber-300/80 bg-background/50 p-2 rounded border border-amber-500/20">
+              <strong>To fix this:</strong> Firebase Console &rarr; Authentication &rarr; Settings &rarr; Authorized domains &rarr; Add <em>{typeof window !== "undefined" ? window.location.hostname : "invisto.netlify.app"}</em>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col gap-4 py-2">
           <Button
