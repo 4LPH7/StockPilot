@@ -34,7 +34,12 @@ export default function DeleteItemButton({ itemId, onDeleteItem }: DeleteItemBut
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Delete item"
+          className="h-9 w-9 sm:h-8 sm:w-8 text-destructive hover:text-destructive hover:bg-destructive/10 touch-manipulation"
+        >
           <Trash2 className="h-4 w-4" />
         </Button>
       </AlertDialogTrigger>

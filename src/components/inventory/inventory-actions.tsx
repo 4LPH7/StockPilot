@@ -80,15 +80,16 @@ export default function InventoryActions({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
+            aria-label="Search catalog items"
             placeholder="Search items by name, category, description..."
             className="w-full pl-10"
             value={searchTerm}
             onChange={(e) => onSearch(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
           <Select value={selectedCategory} onValueChange={onCategoryChange}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-[150px]" aria-label="Filter by category">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -101,7 +102,7 @@ export default function InventoryActions({
             </SelectContent>
           </Select>
           <Select value={selectedStatus} onValueChange={onStatusChange}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[140px]" aria-label="Filter by stock status">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -113,16 +114,30 @@ export default function InventoryActions({
           </Select>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <Button onClick={onOpenHistory} variant="outline" title="View stock movement audit history">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          onClick={onOpenHistory}
+          variant="outline"
+          aria-label="View stock movement audit history"
+          title="View stock movement audit history"
+        >
           <History className="mr-2 h-4 w-4" />
           Audit Log
         </Button>
-        <Button onClick={onOpenImport} variant="outline" title="Bulk import catalog from CSV or Excel">
+        <Button
+          onClick={onOpenImport}
+          variant="outline"
+          aria-label="Bulk import catalog from CSV or Excel"
+          title="Bulk import catalog from CSV or Excel"
+        >
           <Upload className="mr-2 h-4 w-4" />
           Import
         </Button>
-        <Button onClick={handleExport} variant="outline">
+        <Button
+          onClick={handleExport}
+          variant="outline"
+          aria-label="Export inventory to Excel"
+        >
           <FileDown className="mr-2 h-4 w-4" />
           Export
         </Button>
