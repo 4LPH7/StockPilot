@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, FileDown } from "lucide-react";
+import { Search, FileDown, History } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,7 @@ type InventoryActionsProps = {
   onStatusChange: (status: string) => void;
   categories: string[];
   onAddItem: (item: Omit<InventoryItem, "id">) => void;
+  onOpenHistory: () => void;
   inventory: InventoryItem[];
 };
 
@@ -36,6 +37,7 @@ export default function InventoryActions({
   onStatusChange,
   categories,
   onAddItem,
+  onOpenHistory,
   inventory 
 }: InventoryActionsProps) {
   const handleExport = () => {
@@ -110,6 +112,10 @@ export default function InventoryActions({
         </div>
       </div>
       <div className="flex items-center gap-2">
+        <Button onClick={onOpenHistory} variant="outline" title="View stock movement audit history">
+          <History className="mr-2 h-4 w-4" />
+          Audit Log
+        </Button>
         <Button onClick={handleExport} variant="outline">
           <FileDown className="mr-2 h-4 w-4" />
           Export

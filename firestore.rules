@@ -38,5 +38,16 @@ service cloud.firestore {
       allow update: if isOwner(userId) && isValidItem(request.resource.data);
       allow delete: if isOwner(userId);
     }
+
+    /**
+     * User-isolated immutable stock movements audit trail.
+     * Only the authenticated owner can read and append audit logs.
+     * Modification and deletion are strictly forbidden for tamper-proof auditing.
+     */
+    match /users/{userId}/movements/{movementId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update, delete: if false; // Immutable audit log
+    }
   }
 }
