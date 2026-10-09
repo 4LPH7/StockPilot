@@ -72,5 +72,5 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Automated Testing Suite (Vitest & Playwright) and GitHub Actions CI Pipeline
+- [x] 03-01: Automated Testing Suite (Vitest & Playwright) and GitHub Actions CI Pipeline
 - [ ] 03-02: Firebase Emulator Sandboxing, Storeroom Mobile Accessibility, and Portfolio README Showcase

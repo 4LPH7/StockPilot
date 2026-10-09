@@ -18,6 +18,8 @@ import {
 } from 'recharts';
 import { BarChart as BarChartIcon, DollarSign, Package, PieChart as PieChartIcon, AlertTriangle } from 'lucide-react';
 
+import { calculateInventoryStats } from '@/lib/inventory-calculations';
+
 type InventoryStatsProps = {
   items: InventoryItem[];
   currency: Currency;
@@ -27,13 +29,6 @@ type InventoryStatsProps = {
 const COLORS = ['#673AB7', '#D1C4E9', '#7C4DFF', '#512DA8', '#B39DDB'];
 
 export default function InventoryStats({ items, currency, conversionRate }: InventoryStatsProps) {
-    const convertPrice = (price: number) => {
-        if (currency === 'USD') {
-            return price / conversionRate;
-        }
-        return price;
-    };
-
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
@@ -44,37 +39,7 @@ export default function InventoryStats({ items, currency, conversionRate }: Inve
     }
 
   const { totalValue, totalItems, lowStockCount, categoryData, topItems } = useMemo(() => {
-    const stats = items.reduce(
-      (acc, item) => {
-        const itemPrice = currency === 'USD' ? item.price / conversionRate : item.price;
-        const itemValue = itemPrice * item.quantity;
-        acc.totalValue += itemValue;
-        acc.totalItems += item.quantity;
-        
-        const categoryValue = (acc.categoryValues[item.category] || 0) + itemValue;
-        acc.categoryValues[item.category] = categoryValue;
-
-        acc.allItems.push({ name: item.name, value: itemValue });
-
-        return acc;
-      },
-      { totalValue: 0, totalItems: 0, categoryValues: {} as Record<string, number>, allItems: [] as {name: string, value: number}[] }
-    );
-
-    const categoryChartData = Object.entries(stats.categoryValues)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-    
-    const topItemsData = stats.allItems.sort((a,b) => b.value - a.value).slice(0, 5);
-    const lowStockAlerts = items.filter((item) => item.quantity <= (item.lowStockThreshold ?? 10)).length;
-
-    return {
-      totalValue: stats.totalValue,
-      totalItems: stats.totalItems,
-      lowStockCount: lowStockAlerts,
-      categoryData: categoryChartData,
-      topItems: topItemsData,
-    };
+    return calculateInventoryStats(items, currency, conversionRate);
   }, [items, currency, conversionRate]);
 
   

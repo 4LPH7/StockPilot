@@ -50,7 +50,17 @@ function normalizeHeaderKey(header: string): string {
 }
 
 export async function parseSpreadsheetFile(file: File): Promise<ParseImportResult> {
-  const arrayBuffer = await file.arrayBuffer();
+  let arrayBuffer: ArrayBuffer;
+  if (typeof file.arrayBuffer === "function") {
+    arrayBuffer = await file.arrayBuffer();
+  } else {
+    arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error || new Error("Failed to read file"));
+      reader.readAsArrayBuffer(file);
+    });
+  }
   const workbook = XLSX.read(arrayBuffer, { type: "array" });
   const firstSheetName = workbook.SheetNames[0];
 
