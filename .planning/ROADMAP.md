@@ -54,7 +54,7 @@ Plans:
 
 Plans:
 - [x] 02-01: Low-Stock Thresholds, Status Indicators, and Enhanced Filtering
-- [ ] 02-02: Immutable Movement Audit Trail Subcollection and History Timeline
+- [x] 02-02: Immutable Movement Audit Trail Subcollection and History Timeline
 - [ ] 02-03: Bulk Catalog Import with SheetJS, Pre-commit Validation Preview, and Sample CSV
 
 ### Phase 3: Engineering Rigor & Presentation

@@ -6,6 +6,7 @@ import Header from "@/components/layout/header";
 import InventoryActions from "@/components/inventory/inventory-actions";
 import InventoryTable from "@/components/inventory/inventory-table";
 import InventoryStats from "@/components/inventory/inventory-stats";
+import { MovementHistoryDialog } from "@/components/inventory/movement-history-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,9 @@ export type Currency = "INR" | "USD";
 export default function Home() {
   const {
     inventory,
+    movements,
     loading,
+    loadingMovements,
     user,
     isUserLoading,
     searchTerm,
@@ -29,6 +32,7 @@ export default function Home() {
   } = useInventory();
   const [currency, setCurrency] = useState<Currency>("INR");
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   
@@ -118,6 +122,7 @@ export default function Home() {
           onStatusChange={setStatusFilter}
           categories={allCategories}
           onAddItem={handleAddItem}
+          onOpenHistory={() => setHistoryDialogOpen(true)}
           inventory={filteredInventory}
         />
 
@@ -151,6 +156,12 @@ export default function Home() {
       </main>
 
       <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
+      <MovementHistoryDialog
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        movements={movements}
+        loading={loadingMovements}
+      />
     </div>
   );
 }

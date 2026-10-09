@@ -7,3 +7,22 @@ export type InventoryItem = {
   price: number;
   lowStockThreshold?: number;
 };
+
+export type StockMovementType =
+  | "creation"
+  | "restock"
+  | "reduction"
+  | "adjustment"
+  | "deletion";
+
+export interface StockMovement {
+  id: string;
+  itemId: string;
+  itemName: string;
+  type: StockMovementType;
+  delta: number;
+  previousQuantity: number;
+  newQuantity: number;
+  timestamp: number;
+  note?: string;
+}
