@@ -1,24 +1,33 @@
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, type Auth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, type Firestore, connectFirestoreEmulator } from 'firebase/firestore';
 
-let firebaseApp: FirebaseApp;
-let auth: Auth;
-let firestore: Firestore;
+let firebaseApp: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let firestore: Firestore | null = null;
 
 export function initializeFirebase() {
   if (typeof window !== 'undefined') {
-    if (!getApps().length) {
-      initializeApp(firebaseConfig);
+    try {
+      if (!firebaseConfig.apiKey) {
+        console.warn("StockPilot: No Firebase API key configured.");
+        return { firebaseApp: null, auth: null, firestore: null };
+      }
+      if (!getApps().length) {
+        initializeApp(firebaseConfig);
+      }
+      const app = getApp();
+      const services = getSdks(app);
+      firebaseApp = services.firebaseApp;
+      auth = services.auth;
+      firestore = services.firestore;
+    } catch (error) {
+      console.error("StockPilot: Error initializing Firebase:", error);
+      return { firebaseApp: null, auth: null, firestore: null };
     }
-    const app = getApp();
-    const services = getSdks(app);
-    firebaseApp = services.firebaseApp;
-    auth = services.auth;
-    firestore = services.firestore;
   }
   
   return { firebaseApp, auth, firestore };
@@ -26,14 +35,28 @@ export function initializeFirebase() {
 
 let emulatorsConnected = false;
 
-export function getSdks(firebaseApp: FirebaseApp) {
-  const authInstance = getAuth(firebaseApp);
-  const firestoreInstance = getFirestore(firebaseApp);
+export function getSdks(app: FirebaseApp) {
+  let authInstance: Auth | null = null;
+  let firestoreInstance: Firestore | null = null;
+
+  try {
+    authInstance = getAuth(app);
+  } catch (error) {
+    console.error("StockPilot: Error initializing Auth SDK:", error);
+  }
+
+  try {
+    firestoreInstance = getFirestore(app);
+  } catch (error) {
+    console.error("StockPilot: Error initializing Firestore SDK:", error);
+  }
 
   if (
     process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true' &&
     typeof window !== 'undefined' &&
-    !emulatorsConnected
+    !emulatorsConnected &&
+    authInstance &&
+    firestoreInstance
   ) {
     try {
       connectFirestoreEmulator(firestoreInstance, 'localhost', 8080);
@@ -45,9 +68,9 @@ export function getSdks(firebaseApp: FirebaseApp) {
   }
 
   return {
-    firebaseApp,
-    auth: authInstance,
-    firestore: firestoreInstance,
+    firebaseApp: app,
+    auth: authInstance as Auth,
+    firestore: firestoreInstance as Firestore,
   };
 }
 

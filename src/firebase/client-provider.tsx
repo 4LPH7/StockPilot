@@ -13,7 +13,13 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
 
   useEffect(() => {
     // Initialize Firebase on the client side, once per component mount.
-    setServices(initializeFirebase());
+    try {
+      const init = initializeFirebase();
+      setServices(init);
+    } catch (err) {
+      console.error("StockPilot: Failed to initialize Firebase:", err);
+      setServices({ firebaseApp: null, auth: null, firestore: null });
+    }
   }, []); // Empty dependency array ensures this runs only once on mount
 
   if (!services) {
