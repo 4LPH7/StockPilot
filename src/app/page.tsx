@@ -7,6 +7,7 @@ import InventoryActions from "@/components/inventory/inventory-actions";
 import InventoryTable from "@/components/inventory/inventory-table";
 import InventoryStats from "@/components/inventory/inventory-stats";
 import { MovementHistoryDialog } from "@/components/inventory/movement-history-dialog";
+import { ImportDialog } from "@/components/inventory/import-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,10 +30,12 @@ export default function Home() {
     handleAddItem,
     handleUpdateItem,
     handleDeleteItem,
+    bulkAddItems,
   } = useInventory();
   const [currency, setCurrency] = useState<Currency>("INR");
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   
@@ -123,6 +126,7 @@ export default function Home() {
           categories={allCategories}
           onAddItem={handleAddItem}
           onOpenHistory={() => setHistoryDialogOpen(true)}
+          onOpenImport={() => setImportDialogOpen(true)}
           inventory={filteredInventory}
         />
 
@@ -161,6 +165,11 @@ export default function Home() {
         onOpenChange={setHistoryDialogOpen}
         movements={movements}
         loading={loadingMovements}
+      />
+      <ImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImportItems={bulkAddItems}
       />
     </div>
   );

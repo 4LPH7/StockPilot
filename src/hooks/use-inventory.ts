@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { InventoryItem, StockMovement, StockMovementType } from "@/types/inventory";
 import { useCollection, useFirebase, useUser, useMemoFirebase } from "@/firebase";
-import { collection, doc, query, orderBy, limit } from "firebase/firestore";
+import { collection, doc, query, orderBy, limit, writeBatch } from "firebase/firestore";
 import { 
   addDocumentNonBlocking,
   deleteDocumentNonBlocking,
@@ -103,6 +103,40 @@ export function useInventory() {
       });
     }
   };
+
+  const bulkAddItems = async (items: Omit<InventoryItem, "id">[]): Promise<number> => {
+    if (!firestore || !user || items.length === 0) return 0;
+
+    const chunkSize = 200;
+    let committedCount = 0;
+
+    for (let i = 0; i < items.length; i += chunkSize) {
+      const chunk = items.slice(i, i + chunkSize);
+      const batch = writeBatch(firestore);
+
+      for (const item of chunk) {
+        const itemRef = doc(collection(firestore, "users", user.uid, "items"));
+        batch.set(itemRef, item);
+
+        const movementRef = doc(collection(firestore, "users", user.uid, "movements"));
+        batch.set(movementRef, {
+          itemId: itemRef.id,
+          itemName: item.name,
+          type: "creation",
+          delta: item.quantity,
+          previousQuantity: 0,
+          newQuantity: item.quantity,
+          timestamp: Date.now(),
+          note: "Bulk imported via spreadsheet",
+        });
+      }
+
+      await batch.commit();
+      committedCount += chunk.length;
+    }
+
+    return committedCount;
+  };
   
   const loading = isUserLoading || (!!user && isInventoryLoading);
 
@@ -118,5 +152,6 @@ export function useInventory() {
     handleAddItem,
     handleUpdateItem,
     handleDeleteItem,
+    bulkAddItems,
   };
 }
