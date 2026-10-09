@@ -15,6 +15,7 @@ import { EditItemDialog } from "./edit-item-dialog";
 import DeleteItemButton from "./delete-item-button";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { getItemStockStatus, getStatusBadgeDetails } from "@/lib/stock-status";
 
 type InventoryTableProps = {
   items: InventoryItem[];
@@ -100,19 +101,15 @@ export default function InventoryTable({ items, onUpdateItem, onDeleteItem, curr
                       <TableCell className="text-right">{formatCurrency(convertedPrice)}</TableCell>
                       <TableCell className="text-center font-medium">{item.quantity}</TableCell>
                       <TableCell className="text-center">
-                        {item.quantity === 0 ? (
-                          <Badge variant="destructive" className="font-normal text-xs">
-                            Out of Stock
-                          </Badge>
-                        ) : item.quantity <= (item.lowStockThreshold ?? 10) ? (
-                          <Badge variant="secondary" className="border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-normal text-xs">
-                            Low Stock
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-normal text-xs">
-                            In Stock
-                          </Badge>
-                        )}
+                        {(() => {
+                          const status = getItemStockStatus(item.quantity, item.lowStockThreshold);
+                          const details = getStatusBadgeDetails(status);
+                          return (
+                            <Badge variant={details.variant} className={details.className}>
+                              {details.label}
+                            </Badge>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-right font-medium">
                         {formatCurrency(convertedPrice * item.quantity)}
