@@ -69,3 +69,8 @@ Plans:
   1. Automated tests pass locally and in GitHub Actions CI.
   2. Zero typecheck or linting errors in strict mode.
   3. Full open-source portfolio polish with license and badges.
+**Plans**: 2 plans
+
+Plans:
+- [ ] 03-01: Automated Testing Suite (Vitest & Playwright) and GitHub Actions CI Pipeline
+- [ ] 03-02: Firebase Emulator Sandboxing, Storeroom Mobile Accessibility, and Portfolio README Showcase
