@@ -16,15 +16,13 @@ service cloud.firestore {
       return data.name is string 
         && data.name.size() >= 1 
         && data.name.size() <= 100
-        && (data.description == null || (data.description is string && data.description.size() <= 500))
+        && (!('description' in data) || data.description == null || (data.description is string && data.description.size() <= 500))
         && data.category is string 
         && data.category.size() >= 1 
         && data.category.size() <= 50
-        && data.quantity is int 
-        && data.quantity >= 0
-        && (data.price is int || data.price is float) 
-        && data.price >= 0
-        && (!('lowStockThreshold' in data) || (data.lowStockThreshold is int && data.lowStockThreshold >= 0));
+        && (data.quantity is number && data.quantity >= 0)
+        && (data.price is number && data.price >= 0)
+        && (!('lowStockThreshold' in data) || (data.lowStockThreshold is number && data.lowStockThreshold >= 0));
     }
 
     /**
