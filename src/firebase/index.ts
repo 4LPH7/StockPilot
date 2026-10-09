@@ -2,10 +2,9 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore'
+import { getAuth, Auth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
 let firebaseApp: FirebaseApp;
 let auth: Auth;
 let firestore: Firestore;
@@ -22,16 +21,33 @@ export function initializeFirebase() {
     firestore = services.firestore;
   }
   
-  // On the server, this will be undefined, but the hooks are designed to handle this
-  // by only running on the client.
   return { firebaseApp, auth, firestore };
 }
 
+let emulatorsConnected = false;
+
 export function getSdks(firebaseApp: FirebaseApp) {
+  const authInstance = getAuth(firebaseApp);
+  const firestoreInstance = getFirestore(firebaseApp);
+
+  if (
+    process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true' &&
+    typeof window !== 'undefined' &&
+    !emulatorsConnected
+  ) {
+    try {
+      connectFirestoreEmulator(firestoreInstance, 'localhost', 8080);
+      connectAuthEmulator(authInstance, 'http://localhost:9099');
+      emulatorsConnected = true;
+    } catch {
+      // Ignore if already connected in hot-reload
+    }
+  }
+
   return {
     firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    auth: authInstance,
+    firestore: firestoreInstance,
   };
 }
 

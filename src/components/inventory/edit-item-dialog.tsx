@@ -84,8 +84,13 @@ export function EditItemDialog({ item, onUpdateItem }: EditItemDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Edit className="h-4 w-4" />
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Edit item"
+          className="h-9 w-9 sm:h-8 sm:w-8 touch-manipulation"
+        >
+          <Edit className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[480px]">
