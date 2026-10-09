@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, FileDown, History } from "lucide-react";
+import { Search, FileDown, History, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,7 @@ type InventoryActionsProps = {
   categories: string[];
   onAddItem: (item: Omit<InventoryItem, "id">) => void;
   onOpenHistory: () => void;
+  onOpenImport: () => void;
   inventory: InventoryItem[];
 };
 
@@ -38,6 +39,7 @@ export default function InventoryActions({
   categories,
   onAddItem,
   onOpenHistory,
+  onOpenImport,
   inventory 
 }: InventoryActionsProps) {
   const handleExport = () => {
@@ -115,6 +117,10 @@ export default function InventoryActions({
         <Button onClick={onOpenHistory} variant="outline" title="View stock movement audit history">
           <History className="mr-2 h-4 w-4" />
           Audit Log
+        </Button>
+        <Button onClick={onOpenImport} variant="outline" title="Bulk import catalog from CSV or Excel">
+          <Upload className="mr-2 h-4 w-4" />
+          Import
         </Button>
         <Button onClick={handleExport} variant="outline">
           <FileDown className="mr-2 h-4 w-4" />
