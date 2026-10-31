@@ -192,7 +192,7 @@ export function ImportDialog({
                   Click to browse or drag and drop your file here
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Supports CSV, XLSX, and XLS formats (up to 500 items per import)
+                  Supports CSV, XLSX, and XLS formats (up to 5 MB / 5,000 rows)
                 </p>
               </div>
             </div>

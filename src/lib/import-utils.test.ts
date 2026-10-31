@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { itemImportRowSchema, parseSpreadsheetFile } from "./import-utils";
+import { itemImportRowSchema, parseSpreadsheetFile, MAX_IMPORT_BYTES } from "./import-utils";
 import * as XLSX from "xlsx";
 
 describe("itemImportRowSchema", () => {
@@ -125,5 +125,12 @@ describe("parseSpreadsheetFile", () => {
 
     expect(parsed.invalidRows[0].rowNumber).toBe(3);
     expect(parsed.invalidRows[0].errors.some((e) => e.includes("price"))).toBe(true);
+  });
+});
+
+describe("upload guard", () => {
+  it("rejects files over 5 MB before parsing", async () => {
+    const big = { size: MAX_IMPORT_BYTES + 1 } as File;
+    await expect(parseSpreadsheetFile(big)).rejects.toThrow("5 MB");
   });
 });

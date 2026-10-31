@@ -49,7 +49,13 @@ function normalizeHeaderKey(header: string): string {
   return header;
 }
 
+export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
+export const MAX_IMPORT_ROWS = 5000;
+
 export async function parseSpreadsheetFile(file: File): Promise<ParseImportResult> {
+  if (file.size > MAX_IMPORT_BYTES) {
+    throw new Error("File is larger than 5 MB. Split it into smaller files.");
+  }
   let arrayBuffer: ArrayBuffer;
   if (typeof file.arrayBuffer === "function") {
     arrayBuffer = await file.arrayBuffer();
@@ -70,6 +76,9 @@ export async function parseSpreadsheetFile(file: File): Promise<ParseImportResul
 
   const worksheet = workbook.Sheets[firstSheetName];
   const rawRows: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+  if (rawRows.length > MAX_IMPORT_ROWS) {
+    throw new Error(`File has ${rawRows.length} rows; the limit is ${MAX_IMPORT_ROWS}.`);
+  }
 
   const validItems: ValidImportItem[] = [];
   const invalidRows: InvalidImportRow[] = [];
