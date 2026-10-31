@@ -22,7 +22,19 @@ service cloud.firestore {
         && data.category.size() <= 50
         && (data.quantity is number && data.quantity >= 0)
         && (data.price is number && data.price >= 0)
+        && (!('lastMovementId' in data) || data.lastMovementId is string)
         && (!('lowStockThreshold' in data) || (data.lowStockThreshold is number && data.lowStockThreshold >= 0));
+    }
+
+    // The movement doc named by item.lastMovementId must be created in the same
+    // batch/transaction and match the item's quantity change (audit binding).
+    function movementMatches(userId, itemId, lastId, prevQty, newQty) {
+      let path = /databases/$(database)/documents/users/$(userId)/movements/$(lastId);
+      return !exists(path)
+        && existsAfter(path)
+        && getAfter(path).data.itemId == itemId
+        && getAfter(path).data.previousQuantity == prevQty
+        && getAfter(path).data.newQuantity == newQty;
     }
 
     /**
@@ -32,8 +44,14 @@ service cloud.firestore {
      */
     match /users/{userId}/items/{itemId} {
       allow read: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidItem(request.resource.data);
-      allow update: if isOwner(userId) && isValidItem(request.resource.data);
+      allow create: if isOwner(userId) && isValidItem(request.resource.data)
+        && request.resource.data.lastMovementId is string
+        && movementMatches(userId, itemId, request.resource.data.lastMovementId, 0, request.resource.data.quantity);
+      allow update: if isOwner(userId) && isValidItem(request.resource.data)
+        && (request.resource.data.quantity == resource.data.quantity
+          || (request.resource.data.lastMovementId is string
+            && movementMatches(userId, itemId, request.resource.data.lastMovementId,
+                               resource.data.quantity, request.resource.data.quantity)));
       allow delete: if isOwner(userId);
     }
 

@@ -6,6 +6,7 @@ export type InventoryItem = {
   category: string;
   price: number;
   lowStockThreshold?: number;
+  lastMovementId?: string;
 };
 
 export type StockMovementType =

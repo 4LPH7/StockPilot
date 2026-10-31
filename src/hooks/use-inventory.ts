@@ -3,12 +3,17 @@
 import { useState } from "react";
 import type { InventoryItem, StockMovement, StockMovementType } from "@/types/inventory";
 import { useCollection, useFirebase, useUser, useMemoFirebase } from "@/firebase";
-import { collection, doc, query, orderBy, limit, writeBatch } from "firebase/firestore";
-import { 
-  addDocumentNonBlocking,
-  deleteDocumentNonBlocking,
-  setDocumentNonBlocking 
-} from "@/firebase/non-blocking-updates";
+import { collection, doc, query, orderBy, limit, writeBatch, runTransaction } from "firebase/firestore";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
+
+const reportWriteError = (path: string, operation: "create" | "update" | "delete", data?: unknown) => (error: unknown) => {
+  errorEmitter.emit(
+    "permission-error",
+    new FirestorePermissionError({ path, operation, requestResourceData: data })
+  );
+  console.error(error);
+};
 
 export function useInventory() {
   const { firestore } = useFirebase();
@@ -38,23 +43,21 @@ export function useInventory() {
 
   const handleAddItem = (item: Omit<InventoryItem, "id">) => {
     if (!itemsCollection || !firestore || !user) return;
-    const itemPromise = addDocumentNonBlocking(itemsCollection, item);
-    if (itemPromise) {
-      itemPromise.then((docRef) => {
-        if (!docRef) return;
-        const movementsCol = collection(firestore, "users", user.uid, "movements");
-        addDocumentNonBlocking(movementsCol, {
-          itemId: docRef.id,
-          itemName: item.name,
-          type: "creation",
-          delta: item.quantity,
-          previousQuantity: 0,
-          newQuantity: item.quantity,
-          timestamp: Date.now(),
-          note: "Item created in catalog",
-        });
-      });
-    }
+    const itemRef = doc(itemsCollection);
+    const movementRef = doc(collection(firestore, "users", user.uid, "movements"));
+    const batch = writeBatch(firestore);
+    batch.set(itemRef, { ...item, lastMovementId: movementRef.id });
+    batch.set(movementRef, {
+      itemId: itemRef.id,
+      itemName: item.name,
+      type: "creation",
+      delta: item.quantity,
+      previousQuantity: 0,
+      newQuantity: item.quantity,
+      timestamp: Date.now(),
+      note: "Item created in catalog",
+    });
+    batch.commit().catch(reportWriteError(itemRef.path, "create", item));
   };
 
   const handleUpdateItem = (
@@ -62,36 +65,41 @@ export function useInventory() {
     updatedItem: Omit<InventoryItem, "id">
   ) => {
     if (!firestore || !user) return;
-    const existing = inventory?.find((i) => i.id === itemId);
-    const docRef = doc(firestore, "users", user.uid, "items", itemId);
-    setDocumentNonBlocking(docRef, updatedItem, { merge: true });
-
-    if (existing && existing.quantity !== updatedItem.quantity) {
-      const delta = updatedItem.quantity - existing.quantity;
-      const movementType: StockMovementType = delta > 0 ? "restock" : "reduction";
-      const movementsCol = collection(firestore, "users", user.uid, "movements");
-      addDocumentNonBlocking(movementsCol, {
+    const itemRef = doc(firestore, "users", user.uid, "items", itemId);
+    const movementRef = doc(collection(firestore, "users", user.uid, "movements"));
+    // Transaction: reads the live quantity so concurrent edits can't record a stale delta.
+    // ponytail: transactions need a connection; offline edits fail instead of queueing.
+    runTransaction(firestore, async (tx) => {
+      const snap = await tx.get(itemRef);
+      const previousQuantity: number = snap.exists() ? snap.data().quantity : 0;
+      if (previousQuantity === updatedItem.quantity) {
+        tx.set(itemRef, updatedItem, { merge: true });
+        return;
+      }
+      const delta = updatedItem.quantity - previousQuantity;
+      const type: StockMovementType = delta > 0 ? "restock" : "reduction";
+      tx.set(itemRef, { ...updatedItem, lastMovementId: movementRef.id }, { merge: true });
+      tx.set(movementRef, {
         itemId,
         itemName: updatedItem.name,
-        type: movementType,
+        type,
         delta,
-        previousQuantity: existing.quantity,
+        previousQuantity,
         newQuantity: updatedItem.quantity,
         timestamp: Date.now(),
-        note: `Quantity changed from ${existing.quantity} to ${updatedItem.quantity}`,
+        note: `Quantity changed from ${previousQuantity} to ${updatedItem.quantity}`,
       });
-    }
+    }).catch(reportWriteError(itemRef.path, "update", updatedItem));
   };
 
   const handleDeleteItem = (itemId: string) => {
     if (!firestore || !user) return;
     const existing = inventory?.find((i) => i.id === itemId);
-    const docRef = doc(firestore, "users", user.uid, "items", itemId);
-    deleteDocumentNonBlocking(docRef);
-
+    const itemRef = doc(firestore, "users", user.uid, "items", itemId);
+    const batch = writeBatch(firestore);
+    batch.delete(itemRef);
     if (existing) {
-      const movementsCol = collection(firestore, "users", user.uid, "movements");
-      addDocumentNonBlocking(movementsCol, {
+      batch.set(doc(collection(firestore, "users", user.uid, "movements")), {
         itemId,
         itemName: existing.name,
         type: "deletion",
@@ -102,6 +110,7 @@ export function useInventory() {
         note: `Deleted from catalog (${existing.quantity} units)`,
       });
     }
+    batch.commit().catch(reportWriteError(itemRef.path, "delete"));
   };
 
   const bulkAddItems = async (items: Omit<InventoryItem, "id">[]): Promise<number> => {
@@ -116,9 +125,8 @@ export function useInventory() {
 
       for (const item of chunk) {
         const itemRef = doc(collection(firestore, "users", user.uid, "items"));
-        batch.set(itemRef, item);
-
         const movementRef = doc(collection(firestore, "users", user.uid, "movements"));
+        batch.set(itemRef, { ...item, lastMovementId: movementRef.id });
         batch.set(movementRef, {
           itemId: itemRef.id,
           itemName: item.name,
