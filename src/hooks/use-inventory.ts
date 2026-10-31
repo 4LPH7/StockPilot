@@ -13,6 +13,7 @@ import {
   serverTimestamp,
   getDoc,
   getDocFromCache,
+  getDocsFromServer,
   type DocumentReference,
 } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
@@ -197,6 +198,12 @@ export function useInventory() {
   // Replays 30 days of history through the same audited writes the app uses: one batch per step.
   const seedDemoWarehouse = async () => {
     if (!itemsCollection || !firestore || !user) return;
+    // Re-check on the server: another tab or device may have added items since the cached snapshot.
+    // ponytail: a write landing in the ms between this read and the first commit can still mix in;
+    // a rules-enforced marker doc would close that window if it ever matters.
+    const existing = await getDocsFromServer(query(itemsCollection, limit(1)));
+    if (!existing.empty) throw new Error("Your catalog already has items, so the demo wasn't loaded.");
+
     const plan = buildDemoPlan();
     const refs = plan.map(() => doc(itemsCollection));
 
@@ -217,22 +224,45 @@ export function useInventory() {
     });
     await batch.commit();
 
+    const quantities = plan.map((p) => p.openingQuantity);
     const stepCount = Math.max(...plan.map((p) => p.steps.length));
-    for (let k = 0; k < stepCount; k++) {
-      batch = writeBatch(firestore);
-      plan.forEach(({ item, steps }, i) => {
-        const step = steps[k];
-        if (!step) return;
-        const movementRef = doc(movementsCol());
-        batch.set(refs[i], { quantity: step.newQuantity, lastMovementId: movementRef.id }, { merge: true });
-        batch.set(movementRef, movementDoc({
+    try {
+      for (let k = 0; k < stepCount; k++) {
+        batch = writeBatch(firestore);
+        plan.forEach(({ item, steps }, i) => {
+          const step = steps[k];
+          if (!step) return;
+          const movementRef = doc(movementsCol());
+          batch.set(refs[i], { quantity: step.newQuantity, lastMovementId: movementRef.id }, { merge: true });
+          batch.set(movementRef, movementDoc({
+            itemId: refs[i].id,
+            itemName: item.name,
+            unitPrice: item.price,
+            ...step,
+          }));
+        });
+        await batch.commit();
+        plan.forEach(({ steps }, i) => {
+          if (steps[k]) quantities[i] = steps[k].newQuantity;
+        });
+      }
+    } catch (error) {
+      // Roll back the half-seeded items (logging the deletions) so the catalog is empty and the demo can be retried.
+      const cleanup = writeBatch(firestore);
+      plan.forEach(({ item }, i) => {
+        cleanup.delete(refs[i]);
+        cleanup.set(doc(movementsCol()), movementDoc({
           itemId: refs[i].id,
           itemName: item.name,
+          type: "deletion",
+          previousQuantity: quantities[i],
+          newQuantity: 0,
           unitPrice: item.price,
-          ...step,
+          note: "Demo setup rolled back",
         }));
       });
-      await batch.commit();
+      await cleanup.commit().catch(console.error);
+      throw error;
     }
   };
 
