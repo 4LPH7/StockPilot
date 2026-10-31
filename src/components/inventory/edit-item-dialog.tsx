@@ -56,17 +56,26 @@ export function EditItemDialog({ item, onUpdateItem }: EditItemDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
+  const currentValues = (): EditItemFormValues => ({
+    name: item.name,
+    description: item.description,
+    quantity: item.quantity,
+    price: item.price,
+    category: item.category,
+    lowStockThreshold: item.lowStockThreshold ?? 10,
+  });
+
   const form = useForm<EditItemFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: item.name,
-      description: item.description,
-      quantity: item.quantity,
-      price: item.price,
-      category: item.category,
-      lowStockThreshold: item.lowStockThreshold ?? 10,
-    },
+    defaultValues: currentValues(),
   });
+
+  // Reload live values on open; otherwise a quantity changed by the +/- steppers
+  // since first render would be written back as a stale edit.
+  const handleOpenChange = (next: boolean) => {
+    if (next) form.reset(currentValues());
+    setOpen(next);
+  };
 
   function onSubmit(values: EditItemFormValues) {
     onUpdateItem(item.id, {
@@ -82,7 +91,7 @@ export function EditItemDialog({ item, onUpdateItem }: EditItemDialogProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
           variant="ghost"

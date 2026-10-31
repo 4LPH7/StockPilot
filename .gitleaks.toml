@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Firebase web API keys are public client identifiers; restrict them by HTTP referrer in Google Cloud Console instead."
+paths = ['''src/firebase/config\.ts''']

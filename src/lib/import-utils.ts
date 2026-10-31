@@ -51,6 +51,8 @@ function normalizeHeaderKey(header: string): string {
 
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 export const MAX_IMPORT_ROWS = 5000;
+// firestore.rules does one getAfter() per audited item; a batch allows 20.
+export const IMPORT_BATCH_ITEMS = 20;
 
 export async function parseSpreadsheetFile(file: File): Promise<ParseImportResult> {
   if (file.size > MAX_IMPORT_BYTES) {

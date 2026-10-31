@@ -20,13 +20,16 @@
 ## ✨ Key Capabilities
 
 - **🔐 Bank-Grade Per-User Data Isolation:** Every user's catalog and movement history are strictly partitioned under `/users/{uid}/items` and `/users/{uid}/movements`. Zero cross-tenant data exposure.
-- **📜 Immutable Stock Movement Audit Trail:** Complete tamper-proof change history (`allow update, delete: if false`). Every creation, restock, reduction, or deletion is logged with transition deltas and timestamps, viewable in an interactive timeline modal.
+- **📜 Immutable Stock Movement Audit Trail:** Complete tamper-proof change history (`allow update, delete: if false`). `firestore.rules` rejects any quantity change that isn't committed in the same batch as a matching movement (`getAfter()` + `committedAt == request.time`), so stale or replayed writes can't rewrite stock. Every creation, restock, reduction, or deletion is logged with transition deltas and timestamps, viewable in an interactive timeline modal.
 - **⚠️ Configurable Low-Stock Alerting:** Per-item configurable alert thresholds with dynamic table status badges (`In Stock`, `Low Stock`, `Out of Stock`) and a dedicated dashboard restock alerts KPI card.
 - **📊 Financial Analytics Dashboard:** Reactive telemetry computing Total Valuation, Unit Counts, Low Stock Alerts, Top 5 Assets by Value (Bar Chart), and Category Allocation (Donut Chart).
 - **🔎 Multi-Criteria Catalog Filtering:** Synchronized real-time filtering across Category dropdown, Stock Health Status dropdown, and keyword search across item names, categories, and descriptions.
 - **📥 In-Browser Spreadsheet Import (.csv & .xlsx):** SheetJS-powered catalog import with automatic header alias normalization, Zod row-level schema validation, pre-commit validation preview tabs (valid vs. rejected with error explanations), and sample template download.
 - **📱 Storeroom Mobile Ergonomics:** Engineered for storeroom warehouse usage on phones and tablets with WCAG-compliant touch targets (min 44px) and full ARIA accessibility.
-- **💱 Dual-Currency Support:** Instantaneous one-click conversion between INR (₹) and USD ($).
+- **💱 Dual-Currency Support:** One-click INR (₹) / USD ($) toggle using the daily ECB rate (Frankfurter API, falls back to ₹83.5 offline). Totals are summed in integer paise to avoid floating-point drift.
+- **🏭 One-Click Demo Warehouse:** "Launch Demo Warehouse" signs in as a guest and seeds 15 SKUs with 30 days of receipts and dispatches, written through the same audited path as real edits.
+- **📶 Offline Storeroom Mode:** Firestore's IndexedDB cache keeps the catalog readable offline and queues edits until the connection returns; the header shows an Offline badge.
+- **➕ Quick-Adjust Steppers:** +1 / −1 buttons on every row with a 5-second Undo, each logged as its own movement.
 
 ---
 
@@ -145,6 +148,9 @@ npm test
 # Run unit tests in watch mode
 npm run test:watch
 
+# Run Firestore security-rules tests against the emulator (needs Java 11+)
+npm run test:rules
+
 # Run Playwright end-to-end smoke tests
 npm run test:e2e
 
@@ -164,7 +170,10 @@ Every pull request and push to `main` triggers `.github/workflows/ci.yml` runnin
 1. TypeScript strict typecheck (`npm run typecheck`)
 2. ESLint code validation (`npm run lint`)
 3. Vitest unit test suite execution (`npm test`)
-4. Production bundle compilation (`npm run build`)
+4. Firestore rules tests in the emulator (`npm run test:rules`)
+5. Production bundle compilation (`npm run build`)
+
+A separate `gitleaks` job scans every push and PR for committed secrets (`.gitleaks.toml` allowlists the public Firebase web config).
 
 ---
 

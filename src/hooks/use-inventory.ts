@@ -1,11 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { InventoryItem, StockMovement, StockMovementType } from "@/types/inventory";
 import { useCollection, useFirebase, useUser, useMemoFirebase } from "@/firebase";
-import { collection, doc, query, orderBy, limit, writeBatch, runTransaction } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  query,
+  orderBy,
+  limit,
+  writeBatch,
+  serverTimestamp,
+  getDoc,
+  getDocFromCache,
+  type DocumentReference,
+} from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { IMPORT_BATCH_ITEMS } from "@/lib/import-utils";
+import { buildDemoPlan } from "@/lib/demo-seed";
+
+type ItemData = Omit<InventoryItem, "id">;
 
 const reportWriteError = (path: string, operation: "create" | "update" | "delete", data?: unknown) => (error: unknown) => {
   errorEmitter.emit(
@@ -15,16 +30,38 @@ const reportWriteError = (path: string, operation: "create" | "update" | "delete
   console.error(error);
 };
 
+// committedAt lets firestore.rules check the movement was written in the same batch as the item.
+const movementDoc = (m: {
+  itemId: string;
+  itemName: string;
+  previousQuantity: number;
+  newQuantity: number;
+  unitPrice: number;
+  note: string;
+  type?: StockMovementType;
+  timestamp?: number;
+}) => ({
+  type: m.newQuantity > m.previousQuantity ? "restock" : "reduction",
+  timestamp: Date.now(),
+  ...m,
+  delta: m.newQuantity - m.previousQuantity,
+  committedAt: serverTimestamp(),
+});
+
+// Cache first so edits work offline; the server rejects the write if the cached quantity was stale.
+const readItem = (ref: DocumentReference) => getDocFromCache(ref).catch(() => getDoc(ref));
+
 export function useInventory() {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
   const [searchTerm, setSearchTerm] = useState("");
+  const writeQueue = useRef<Promise<void>>(Promise.resolve());
 
   const itemsCollection = useMemoFirebase(
     () => (firestore && user ? collection(firestore, "users", user.uid, "items") : null),
     [firestore, user]
   );
-  
+
   const { data: inventory, isLoading: isInventoryLoading } = useCollection<InventoryItem>(itemsCollection);
 
   const movementsQuery = useMemoFirebase(
@@ -41,56 +78,66 @@ export function useInventory() {
 
   const { data: movements, isLoading: isMovementsLoading } = useCollection<StockMovement>(movementsQuery);
 
-  const handleAddItem = (item: Omit<InventoryItem, "id">) => {
+  const movementsCol = () => collection(firestore!, "users", user!.uid, "movements");
+
+  const handleAddItem = (item: ItemData) => {
     if (!itemsCollection || !firestore || !user) return;
     const itemRef = doc(itemsCollection);
-    const movementRef = doc(collection(firestore, "users", user.uid, "movements"));
+    const movementRef = doc(movementsCol());
     const batch = writeBatch(firestore);
     batch.set(itemRef, { ...item, lastMovementId: movementRef.id });
-    batch.set(movementRef, {
+    batch.set(movementRef, movementDoc({
       itemId: itemRef.id,
       itemName: item.name,
       type: "creation",
-      delta: item.quantity,
       previousQuantity: 0,
       newQuantity: item.quantity,
-      timestamp: Date.now(),
+      unitPrice: item.price,
       note: "Item created in catalog",
-    });
+    }));
     batch.commit().catch(reportWriteError(itemRef.path, "create", item));
   };
 
-  const handleUpdateItem = (
-    itemId: string,
-    updatedItem: Omit<InventoryItem, "id">
-  ) => {
+  // Single write path for edits and quick adjusts. Batch (not transaction) so it queues offline;
+  // the rules require previousQuantity == stored quantity, so another device's stale write is rejected.
+  // Changes run one after another so rapid taps each read the previous tap's local result.
+  const changeItem = (itemId: string, toPatch: (current: ItemData) => Partial<ItemData>, note?: string) => {
     if (!firestore || !user) return;
     const itemRef = doc(firestore, "users", user.uid, "items", itemId);
-    const movementRef = doc(collection(firestore, "users", user.uid, "movements"));
-    // Transaction: reads the live quantity so concurrent edits can't record a stale delta.
-    // ponytail: transactions need a connection; offline edits fail instead of queueing.
-    runTransaction(firestore, async (tx) => {
-      const snap = await tx.get(itemRef);
-      const previousQuantity: number = snap.exists() ? snap.data().quantity : 0;
-      if (previousQuantity === updatedItem.quantity) {
-        tx.set(itemRef, updatedItem, { merge: true });
-        return;
+    const step = writeQueue.current.then(async () => {
+      const snap = await readItem(itemRef);
+      if (!snap.exists()) return;
+      const current = snap.data() as ItemData;
+      const patch = toPatch(current);
+      const newQuantity = patch.quantity ?? current.quantity;
+      if (newQuantity < 0) return;
+      const batch = writeBatch(firestore);
+      if (newQuantity === current.quantity) {
+        batch.set(itemRef, patch, { merge: true });
+      } else {
+        const movementRef = doc(movementsCol());
+        batch.set(itemRef, { ...patch, lastMovementId: movementRef.id }, { merge: true });
+        batch.set(movementRef, movementDoc({
+          itemId,
+          itemName: patch.name ?? current.name,
+          previousQuantity: current.quantity,
+          newQuantity,
+          unitPrice: patch.price ?? current.price,
+          note: note ?? `Quantity changed from ${current.quantity} to ${newQuantity}`,
+        }));
       }
-      const delta = updatedItem.quantity - previousQuantity;
-      const type: StockMovementType = delta > 0 ? "restock" : "reduction";
-      tx.set(itemRef, { ...updatedItem, lastMovementId: movementRef.id }, { merge: true });
-      tx.set(movementRef, {
-        itemId,
-        itemName: updatedItem.name,
-        type,
-        delta,
-        previousQuantity,
-        newQuantity: updatedItem.quantity,
-        timestamp: Date.now(),
-        note: `Quantity changed from ${previousQuantity} to ${updatedItem.quantity}`,
-      });
-    }).catch(reportWriteError(itemRef.path, "update", updatedItem));
+      // Wrapped so the queue waits for the local write only, not the server (offline taps still queue).
+      return { serverAck: batch.commit() };
+    });
+    writeQueue.current = step.then(() => undefined, () => undefined);
+    step.then((r) => r?.serverAck).catch(reportWriteError(itemRef.path, "update"));
   };
+
+  const handleUpdateItem = (itemId: string, updatedItem: ItemData) =>
+    changeItem(itemId, () => updatedItem);
+
+  const adjustQuantity = (itemId: string, delta: number, note?: string) =>
+    changeItem(itemId, (current) => ({ quantity: current.quantity + delta }), note);
 
   const handleDeleteItem = (itemId: string) => {
     if (!firestore || !user) return;
@@ -99,57 +146,101 @@ export function useInventory() {
     const batch = writeBatch(firestore);
     batch.delete(itemRef);
     if (existing) {
-      batch.set(doc(collection(firestore, "users", user.uid, "movements")), {
+      batch.set(doc(movementsCol()), movementDoc({
         itemId,
         itemName: existing.name,
         type: "deletion",
-        delta: -existing.quantity,
         previousQuantity: existing.quantity,
         newQuantity: 0,
-        timestamp: Date.now(),
+        unitPrice: existing.price,
         note: `Deleted from catalog (${existing.quantity} units)`,
-      });
+      }));
     }
     batch.commit().catch(reportWriteError(itemRef.path, "delete"));
   };
 
-  const bulkAddItems = async (items: Omit<InventoryItem, "id">[]): Promise<number> => {
-    if (!firestore || !user || items.length === 0) return 0;
+  const bulkAddItems = async (
+    items: ItemData[],
+    onProgress?: (done: number, total: number) => void
+  ): Promise<number> => {
+    if (!itemsCollection || !firestore || !user || items.length === 0) return 0;
 
-    const chunkSize = 200;
     let committedCount = 0;
-
-    for (let i = 0; i < items.length; i += chunkSize) {
-      const chunk = items.slice(i, i + chunkSize);
+    // ponytail: sequential 20-item batches (~250 round trips for 5,000 rows); run a few in parallel if imports feel slow.
+    for (let i = 0; i < items.length; i += IMPORT_BATCH_ITEMS) {
+      const chunk = items.slice(i, i + IMPORT_BATCH_ITEMS);
       const batch = writeBatch(firestore);
 
       for (const item of chunk) {
-        const itemRef = doc(collection(firestore, "users", user.uid, "items"));
-        const movementRef = doc(collection(firestore, "users", user.uid, "movements"));
+        const itemRef = doc(itemsCollection);
+        const movementRef = doc(movementsCol());
         batch.set(itemRef, { ...item, lastMovementId: movementRef.id });
-        batch.set(movementRef, {
+        batch.set(movementRef, movementDoc({
           itemId: itemRef.id,
           itemName: item.name,
           type: "creation",
-          delta: item.quantity,
           previousQuantity: 0,
           newQuantity: item.quantity,
-          timestamp: Date.now(),
+          unitPrice: item.price,
           note: "Bulk imported via spreadsheet",
-        });
+        }));
       }
 
       await batch.commit();
       committedCount += chunk.length;
+      onProgress?.(committedCount, items.length);
     }
 
     return committedCount;
   };
-  
+
+  // Replays 30 days of history through the same audited writes the app uses: one batch per step.
+  const seedDemoWarehouse = async () => {
+    if (!itemsCollection || !firestore || !user) return;
+    const plan = buildDemoPlan();
+    const refs = plan.map(() => doc(itemsCollection));
+
+    let batch = writeBatch(firestore);
+    plan.forEach(({ item, openingQuantity, createdAt }, i) => {
+      const movementRef = doc(movementsCol());
+      batch.set(refs[i], { ...item, quantity: openingQuantity, lastMovementId: movementRef.id });
+      batch.set(movementRef, movementDoc({
+        itemId: refs[i].id,
+        itemName: item.name,
+        type: "creation",
+        previousQuantity: 0,
+        newQuantity: openingQuantity,
+        unitPrice: item.price,
+        timestamp: createdAt,
+        note: "Opening stock",
+      }));
+    });
+    await batch.commit();
+
+    const stepCount = Math.max(...plan.map((p) => p.steps.length));
+    for (let k = 0; k < stepCount; k++) {
+      batch = writeBatch(firestore);
+      plan.forEach(({ item, steps }, i) => {
+        const step = steps[k];
+        if (!step) return;
+        const movementRef = doc(movementsCol());
+        batch.set(refs[i], { quantity: step.newQuantity, lastMovementId: movementRef.id }, { merge: true });
+        batch.set(movementRef, movementDoc({
+          itemId: refs[i].id,
+          itemName: item.name,
+          unitPrice: item.price,
+          ...step,
+        }));
+      });
+      await batch.commit();
+    }
+  };
+
   const loading = isUserLoading || (!!user && isInventoryLoading);
 
   return {
     inventory: inventory || [],
+    inventoryReady: inventory !== null,
     movements: movements || [],
     loading,
     loadingMovements: isMovementsLoading,
@@ -160,6 +251,8 @@ export function useInventory() {
     handleAddItem,
     handleUpdateItem,
     handleDeleteItem,
+    adjustQuantity,
     bulkAddItems,
+    seedDemoWarehouse,
   };
 }

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -42,7 +43,10 @@ import {
 type ImportDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onImportItems: (items: ValidImportItem[]) => Promise<number>;
+  onImportItems: (
+    items: ValidImportItem[],
+    onProgress: (done: number, total: number) => void
+  ) => Promise<number>;
 };
 
 export function ImportDialog({
@@ -56,6 +60,7 @@ export function ImportDialog({
   const [validItems, setValidItems] = useState<ValidImportItem[]>([]);
   const [invalidRows, setInvalidRows] = useState<InvalidImportRow[]>([]);
   const [totalRows, setTotalRows] = useState(0);
+  const [importedSoFar, setImportedSoFar] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -66,6 +71,7 @@ export function ImportDialog({
     setTotalRows(0);
     setIsParsing(false);
     setIsImporting(false);
+    setImportedSoFar(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -114,8 +120,12 @@ export function ImportDialog({
   const handleConfirmImport = async () => {
     if (validItems.length === 0) return;
     setIsImporting(true);
+    let committed = 0;
     try {
-      const importedCount = await onImportItems(validItems);
+      const importedCount = await onImportItems(validItems, (done) => {
+        committed = done;
+        setImportedSoFar(done);
+      });
       toast({
         title: "Import Successful!",
         description: `Successfully added ${importedCount} items to your catalog.`,
@@ -126,7 +136,7 @@ export function ImportDialog({
       toast({
         variant: "destructive",
         title: "Import Failed",
-        description: err.message || "An error occurred while importing items.",
+        description: `${committed} of ${validItems.length} items were saved before the error (remove them from the file before retrying). ${err.message || ""}`,
       });
     } finally {
       setIsImporting(false);
@@ -340,6 +350,15 @@ export function ImportDialog({
             </div>
           )}
         </div>
+
+        {isImporting && (
+          <div className="px-6 pb-3 space-y-1.5" role="status">
+            <Progress value={(importedSoFar / validItems.length) * 100} />
+            <p className="text-xs text-muted-foreground">
+              Saved {importedSoFar} of {validItems.length} items…
+            </p>
+          </div>
+        )}
 
         <DialogFooter className="p-6 pt-3 border-t bg-muted/10">
           <Button
