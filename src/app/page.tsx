@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useInventory } from "@/hooks/use-inventory";
 import Header from "@/components/layout/header";
 import InventoryActions from "@/components/inventory/inventory-actions";
@@ -12,8 +12,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AuthDialog } from "@/components/auth/auth-dialog";
-import { ShieldCheck, LogIn, Lock } from "lucide-react";
+import { ShieldCheck, LogIn, Lock, Warehouse, Loader2 } from "lucide-react";
 import { categories as defaultCategories } from "@/lib/inventory-data";
+import { useFirebase } from "@/firebase";
+import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
+import { useToast } from "@/hooks/use-toast";
+import { useUsdInrRate } from "@/hooks/use-fx-rate";
 
 export type Currency = "INR" | "USD";
 
@@ -30,8 +34,13 @@ export default function Home() {
     handleAddItem,
     handleUpdateItem,
     handleDeleteItem,
+    adjustQuantity,
     bulkAddItems,
+    seedDemoWarehouse,
+    inventoryReady,
   } = useInventory();
+  const { auth } = useFirebase();
+  const { toast } = useToast();
   const [currency, setCurrency] = useState<Currency>("INR");
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -39,8 +48,33 @@ export default function Home() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   
-  // Approximate conversion rate
-  const usdToInrRate = 83.5;
+  const usdToInrRate = useUsdInrRate();
+  const [demoRequested, setDemoRequested] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+
+  // Demo: sign in as a guest if needed, then seed once the (empty) catalog has loaded.
+  const launchDemo = () => {
+    setDemoRequested(true);
+    if (!user && auth) {
+      initiateAnonymousSignIn(auth).catch((error) => {
+        setDemoRequested(false);
+        toast({ variant: "destructive", title: "Couldn't start the demo", description: error.message });
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!demoRequested || !user || !inventoryReady) return;
+    setDemoRequested(false);
+    if (inventory.length > 0) return; // never mix demo data into a real catalog
+    setSeeding(true);
+    seedDemoWarehouse()
+      .then(() =>
+        toast({ title: "Demo warehouse ready", description: "15 SKUs with 30 days of stock movements." })
+      )
+      .catch((error) => toast({ variant: "destructive", title: "Demo setup failed", description: error.message }))
+      .finally(() => setSeeding(false));
+  }, [demoRequested, user, inventoryReady, inventory.length, seedDemoWarehouse, toast]);
 
   const allCategories = useMemo(() => {
     const customCats = Array.from(new Set(inventory.map((item) => item.category).filter(Boolean)));
@@ -77,7 +111,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen w-full flex-col">
-      <Header currency={currency} onCurrencyChange={setCurrency} />
+      <Header currency={currency} onCurrencyChange={setCurrency} usdToInrRate={usdToInrRate} />
       
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         {!isUserLoading && !user && (
@@ -96,10 +130,16 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-              <Button onClick={() => setAuthDialogOpen(true)} className="gap-2 shrink-0">
-                <LogIn className="h-4 w-4" />
-                Sign In to Get Started
-              </Button>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <Button variant="outline" onClick={launchDemo} disabled={demoRequested || seeding} className="gap-2 shrink-0">
+                  {demoRequested || seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Warehouse className="h-4 w-4" />}
+                  Launch Demo Warehouse
+                </Button>
+                <Button onClick={() => setAuthDialogOpen(true)} className="gap-2 shrink-0">
+                  <LogIn className="h-4 w-4" />
+                  Sign In to Get Started
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -153,6 +193,9 @@ export default function Home() {
             items={filteredInventory}
             onUpdateItem={handleUpdateItem}
             onDeleteItem={handleDeleteItem}
+            onAdjustQuantity={adjustQuantity}
+            onLoadDemo={inventory.length === 0 ? launchDemo : undefined}
+            demoLoading={demoRequested || seeding}
             currency={currency}
             conversionRate={usdToInrRate}
           />

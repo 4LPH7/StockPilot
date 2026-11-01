@@ -3,7 +3,14 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, type Firestore, connectFirestoreEmulator } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  type Firestore,
+  connectFirestoreEmulator,
+} from 'firebase/firestore';
 
 let firebaseApp: FirebaseApp | null = null;
 let auth: Auth | null = null;
@@ -46,9 +53,16 @@ export function getSdks(app: FirebaseApp) {
   }
 
   try {
-    firestoreInstance = getFirestore(app);
-  } catch (error) {
-    console.error("StockPilot: Error initializing Firestore SDK:", error);
+    // IndexedDB cache: reads work offline and writes queue until the connection returns.
+    firestoreInstance = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    try {
+      firestoreInstance = getFirestore(app); // already initialized (hot reload)
+    } catch (error) {
+      console.error("StockPilot: Error initializing Firestore SDK:", error);
+    }
   }
 
   if (

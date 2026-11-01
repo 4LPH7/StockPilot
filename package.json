@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "emulators": "firebase emulators:start"
+    "emulators": "firebase emulators:start",
+    "test:rules": "npx -y firebase-tools@13.22.1 emulators:exec --only firestore,auth --project demo-stockpilot \"vitest run src/firestore-rules.test.ts\""
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.20.0",

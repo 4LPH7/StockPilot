@@ -26,15 +26,17 @@ service cloud.firestore {
         && (!('lowStockThreshold' in data) || (data.lowStockThreshold is number && data.lowStockThreshold >= 0));
     }
 
-    // The movement doc named by item.lastMovementId must be created in the same
-    // batch/transaction and match the item's quantity change (audit binding).
+    // The movement named by item.lastMovementId must be written in this same
+    // batch (committedAt == request.time, so old movements can't be replayed)
+    // and match the item's quantity change (audit binding).
+    // One getAfter per item: batches stay under the 20 access-call limit,
+    // which is why imports commit 20 items per batch.
     function movementMatches(userId, itemId, lastId, prevQty, newQty) {
-      let path = /databases/$(database)/documents/users/$(userId)/movements/$(lastId);
-      return !exists(path)
-        && existsAfter(path)
-        && getAfter(path).data.itemId == itemId
-        && getAfter(path).data.previousQuantity == prevQty
-        && getAfter(path).data.newQuantity == newQty;
+      let m = getAfter(/databases/$(database)/documents/users/$(userId)/movements/$(lastId)).data;
+      return m.committedAt == request.time
+        && m.itemId == itemId
+        && m.previousQuantity == prevQty
+        && m.newQuantity == newQty;
     }
 
     /**
@@ -47,8 +49,11 @@ service cloud.firestore {
       allow create: if isOwner(userId) && isValidItem(request.resource.data)
         && request.resource.data.lastMovementId is string
         && movementMatches(userId, itemId, request.resource.data.lastMovementId, 0, request.resource.data.quantity);
+      // A quantity-preserving edit may skip the movement only if it keeps lastMovementId;
+      // otherwise a stale duplicate (+1 from two devices) would log a phantom movement.
       allow update: if isOwner(userId) && isValidItem(request.resource.data)
-        && (request.resource.data.quantity == resource.data.quantity
+        && ((request.resource.data.quantity == resource.data.quantity
+            && request.resource.data.get('lastMovementId', null) == resource.data.get('lastMovementId', null))
           || (request.resource.data.lastMovementId is string
             && movementMatches(userId, itemId, request.resource.data.lastMovementId,
                                resource.data.quantity, request.resource.data.quantity)));

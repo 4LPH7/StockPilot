@@ -93,4 +93,18 @@ describe("calculateInventoryStats", () => {
     expect(stats.categoryData).toEqual([]);
     expect(stats.topItems).toEqual([]);
   });
+
+  it("sums money without floating-point drift", () => {
+    const cheap = (id: string, price: number): InventoryItem => ({
+      id, name: id, category: "Other", price, quantity: 1, description: "",
+    });
+    expect(calculateInventoryStats([cheap("a", 0.1), cheap("b", 0.2)]).totalValue).toBe(0.3);
+  });
+
+  it("rounds the line total, not a sub-paisa unit price", () => {
+    const item: InventoryItem = {
+      id: "c", name: "Washer", category: "Other", price: 0.125, quantity: 1000, description: "",
+    };
+    expect(calculateInventoryStats([item]).totalValue).toBe(125);
+  });
 });

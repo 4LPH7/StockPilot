@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Package, Repeat, LogIn, LogOut, User as UserIcon } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
+import { Package, Repeat, LogIn, LogOut, User as UserIcon, WifiOff } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type { Currency } from "@/app/page";
 import { Button } from "@/components/ui/button";
 import { useFirebase, useUser } from "@/firebase";
@@ -21,10 +22,21 @@ import { useToast } from "@/hooks/use-toast";
 type HeaderProps = {
   currency: Currency;
   onCurrencyChange: (currency: Currency) => void;
+  usdToInrRate: number;
 };
 
-export default function Header({ currency, onCurrencyChange }: HeaderProps) {
+const subscribeOnline = (onChange: () => void) => {
+  window.addEventListener("online", onChange);
+  window.addEventListener("offline", onChange);
+  return () => {
+    window.removeEventListener("online", onChange);
+    window.removeEventListener("offline", onChange);
+  };
+};
+
+export default function Header({ currency, onCurrencyChange, usdToInrRate }: HeaderProps) {
   const { auth } = useFirebase();
+  const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
   const { user } = useUser();
   const { toast } = useToast();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
@@ -75,7 +87,18 @@ export default function Header({ currency, onCurrencyChange }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={handleCurrencyToggle}>
+          {!online && (
+            <Badge variant="destructive" className="gap-1.5" role="status">
+              <WifiOff className="h-3.5 w-3.5" />
+              Offline<span className="hidden sm:inline">: changes will sync</span>
+            </Badge>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCurrencyToggle}
+            title={`1 USD = ₹${usdToInrRate.toFixed(2)}`}
+          >
             <Repeat className="mr-2 h-4 w-4" />
             Switch to {currency === "INR" ? "USD" : "INR"}
           </Button>

@@ -1,4 +1,10 @@
+"use client";
+
 import type { InventoryItem } from "@/types/inventory";
+import { Minus, Plus, Warehouse, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ToastAction } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 import type { Currency } from "@/app/page";
 import {
   Table,
@@ -21,11 +27,37 @@ type InventoryTableProps = {
   items: InventoryItem[];
   onUpdateItem: (itemId: string, item: Omit<InventoryItem, 'id'>) => void;
   onDeleteItem: (itemId: string) => void;
+  onAdjustQuantity: (itemId: string, delta: number, note?: string) => void;
+  onLoadDemo?: () => void;
+  demoLoading?: boolean;
   currency: Currency;
   conversionRate: number;
 };
 
-export default function InventoryTable({ items, onUpdateItem, onDeleteItem, currency, conversionRate }: InventoryTableProps) {
+export default function InventoryTable({
+  items,
+  onUpdateItem,
+  onDeleteItem,
+  onAdjustQuantity,
+  onLoadDemo,
+  demoLoading,
+  currency,
+  conversionRate,
+}: InventoryTableProps) {
+  const { toast } = useToast();
+
+  const quickAdjust = (item: InventoryItem, delta: number) => {
+    onAdjustQuantity(item.id, delta, `Quick adjust ${delta > 0 ? "+" : ""}${delta}`);
+    toast({
+      title: `${item.name}: ${item.quantity} → ${item.quantity + delta}`,
+      action: (
+        <ToastAction altText="Undo quantity change" onClick={() => onAdjustQuantity(item.id, -delta, "Undo quick adjust")}>
+          Undo
+        </ToastAction>
+      ),
+    });
+  };
+
   if (items.length === 0) {
     const emptyStateImage = PlaceHolderImages.find(p => p.id === "empty-state-box");
     return (
@@ -45,6 +77,12 @@ export default function InventoryTable({ items, onUpdateItem, onDeleteItem, curr
           <p className="text-muted-foreground">
             Add your first item using the &apos;Add Item&apos; button to get started.
           </p>
+          {onLoadDemo && (
+            <Button variant="outline" onClick={onLoadDemo} disabled={demoLoading} className="gap-2">
+              {demoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Warehouse className="h-4 w-4" />}
+              Load demo warehouse
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
@@ -99,7 +137,30 @@ export default function InventoryTable({ items, onUpdateItem, onDeleteItem, curr
                         <Badge variant="secondary">{item.category}</Badge>
                       </TableCell>
                       <TableCell className="text-right">{formatCurrency(convertedPrice)}</TableCell>
-                      <TableCell className="text-center font-medium">{item.quantity}</TableCell>
+                      <TableCell className="text-center font-medium">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Remove one ${item.name}`}
+                            className="h-9 w-9 sm:h-7 sm:w-7 touch-manipulation"
+                            disabled={item.quantity <= 0}
+                            onClick={() => quickAdjust(item, -1)}
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </Button>
+                          <span className="min-w-[2.5ch] tabular-nums">{item.quantity}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Add one ${item.name}`}
+                            className="h-9 w-9 sm:h-7 sm:w-7 touch-manipulation"
+                            onClick={() => quickAdjust(item, 1)}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-center">
                         {(() => {
                           const status = getItemStockStatus(item.quantity, item.lowStockThreshold);
