@@ -39,7 +39,7 @@ export function calculateInventoryStats(
   let totalItems = 0;
 
   const itemValues = items.map((item) => {
-    const paise = toPaise(item.price) * item.quantity;
+    const paise = toPaise(item.price * item.quantity); // round the line total, not the unit price
     totalPaise += paise;
     totalItems += item.quantity;
     categoryPaise[item.category] = (categoryPaise[item.category] || 0) + paise;

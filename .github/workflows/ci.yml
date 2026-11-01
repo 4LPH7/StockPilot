@@ -52,7 +52,7 @@ jobs:
         shell: bash
         run: |
           npm run test:rules | tee rules.log
-          sed 's/\x1b\[[0-9;]*m//g' rules.log | grep -qE "Tests +[0-9]+ passed"
+          sed 's/\x1b\[[0-9;]*m//g' rules.log | grep -E "Tests +[0-9]+ passed" > /dev/null
 
       - name: Build Next.js Application
         run: npm run build
